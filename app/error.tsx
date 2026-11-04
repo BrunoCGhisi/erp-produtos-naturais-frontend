@@ -1,14 +1,15 @@
 "use client";
+import { PageTitle } from "@/components/feedback";
+import { Button } from "@/components/ui/button";
+import { Notice, NoticeDescription } from "@/components/ui/notice";
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
-    <div className="notice notice-error" role="alert">
+    <Notice variant="error" role="alert">
       <div>
-        <h1>Não foi possível abrir esta página</h1>
-        <p>Tente novamente para continuar.</p>
-        <button className="button button-primary" onClick={reset}>
-          Tentar novamente
-        </button>
+        <PageTitle>Não foi possível abrir esta página</PageTitle>
+        <NoticeDescription>Tente novamente para continuar.</NoticeDescription>
+        <Button onClick={reset}>Tentar novamente</Button>
       </div>
-    </div>
+    </Notice>
   );
 }

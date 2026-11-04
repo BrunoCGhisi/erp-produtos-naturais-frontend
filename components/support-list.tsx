@@ -1,4 +1,12 @@
 "use client";
+import {
+  Panel,
+  PanelHeader,
+  PanelTitle,
+  PanelDescription,
+} from "@/components/ui/panel";
+import { Input, Select } from "@/components/ui/input";
+import { Table, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useListarCategorias } from "@/generated/sdk/hooks/useListarCategorias";
@@ -101,35 +109,45 @@ export function SupportList({ resource }: { resource: SupportResource }) {
         }
       />
       {success && (
-        <p role="status" className="success">
+        <p
+          role="status"
+          className="mb-4 rounded-[7px] bg-[#eaf5e7] px-4 py-3 text-[12px] text-[#2d7445]"
+        >
           {success}
         </p>
       )}
-      <div className="panel">
-        <div className="panel-header">
+      <Panel>
+        <PanelHeader>
           <div>
-            <h2>{names.plural} cadastradas</h2>
-            <p>{query.data?.length || 0} registros no catálogo</p>
+            <PanelTitle>{names.plural} cadastradas</PanelTitle>
+            <PanelDescription>
+              {query.data?.length || 0} registros no catálogo
+            </PanelDescription>
           </div>
-        </div>
-        <div className="toolbar">
-          <div className="search-box">
-            <Search size={16} />
-            <input
+        </PanelHeader>
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-[23px] py-[19px] mobile:gap-[9px] mobile:p-[15px]">
+          <div className="relative min-w-[190px] flex-1 mobile:basis-full">
+            <Search
+              className="absolute top-3 left-3 text-[#8a968c]"
+              size={16}
+            />
+            <Input
+              className="pl-9"
               aria-label={`Buscar ${names.plural.toLowerCase()}`}
               placeholder="Buscar por nome…"
               value={search}
               onChange={(e) => control("busca", e.target.value)}
             />
           </div>
-          <select
+          <Select
+            className="w-auto max-w-[190px] text-[12px] mobile:w-[30%] mobile:max-w-none mobile:flex-1 mobile:text-[11px]"
             aria-label="Ordenar registros"
             value={sort}
             onChange={(e) => control("ordem", e.target.value)}
           >
             <option value="asc">Nome: A–Z</option>
             <option value="desc">Nome: Z–A</option>
-          </select>
+          </Select>
         </div>
         {query.isPending ? (
           <Loading />
@@ -149,66 +167,64 @@ export function SupportList({ resource }: { resource: SupportResource }) {
             }
           />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>NOME</th>
-                  {resource === "units" && <th>SIGLA</th>}
+          <Table>
+            <thead>
+              <TableRow>
+                <TableHead>NOME</TableHead>
+                {resource === "units" && <TableHead>SIGLA</TableHead>}
+                {resource === "stores" && (
+                  <>
+                    <TableHead>CNPJ</TableHead>
+                    <TableHead>CIDADE / UF</TableHead>
+                  </>
+                )}
+                <TableHead className="text-right">AÇÕES</TableHead>
+              </TableRow>
+            </thead>
+            <tbody>
+              {rows.map((row: Row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-semibold text-[#304b36] hover:underline">
+                    {row.nome || row.nomeFantasia}
+                  </TableCell>
+                  {resource === "units" && <TableCell>{row.sigla}</TableCell>}
                   {resource === "stores" && (
                     <>
-                      <th>CNPJ</th>
-                      <th>CIDADE / UF</th>
+                      <TableCell>{row.cnpj}</TableCell>
+                      <TableCell>
+                        {row.cidade} / {row.estado}
+                      </TableCell>
                     </>
                   )}
-                  <th className="text-right">AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row: Row) => (
-                  <tr key={row.id}>
-                    <td className="row-title">
-                      {row.nome || row.nomeFantasia}
-                    </td>
-                    {resource === "units" && <td>{row.sigla}</td>}
-                    {resource === "stores" && (
-                      <>
-                        <td>{row.cnpj}</td>
-                        <td>
-                          {row.cidade} / {row.estado}
-                        </td>
-                      </>
-                    )}
-                    <td>
-                      <div className="actions">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Editar ${row.nome || row.nomeFantasia}`}
-                          onClick={() => setEdit(row)}
-                        >
-                          <Pencil size={15} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Excluir ${row.nome || row.nomeFantasia}`}
-                          onClick={() => setRemove(row)}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  <TableCell>
+                    <div className="flex justify-end gap-[3px] [&_button]:text-[#7a887e] [&_button:hover]:text-[#9a3935] mobile:[&_[data-slot=button]]:p-[5px]">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Editar ${row.nome || row.nomeFantasia}`}
+                        onClick={() => setEdit(row)}
+                      >
+                        <Pencil size={15} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Excluir ${row.nome || row.nomeFantasia}`}
+                        onClick={() => setRemove(row)}
+                      >
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </tbody>
+          </Table>
         )}
         {query.isSuccess && (
-          <div className="pagination">
+          <div className="flex items-center justify-between gap-3 border-t border-border px-[23px] py-4 text-[11px] text-[#839083] mobile:flex-col mobile:items-start mobile:p-3.5">
             <span>{filtered.length} registros</span>
-            <div className="pagination-controls">
+            <div className="flex items-center gap-3 mobile:w-full mobile:justify-between">
               <Button
                 variant="outline"
                 size="sm"
@@ -231,7 +247,7 @@ export function SupportList({ resource }: { resource: SupportResource }) {
             </div>
           </div>
         )}
-      </div>
+      </Panel>
       {edit !== undefined && (
         <RecordModal
           resource={resource}

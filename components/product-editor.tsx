@@ -1,4 +1,11 @@
 "use client";
+import { Notice, NoticeDescription } from "@/components/ui/notice";
+import {
+  Panel,
+  PanelHeader,
+  PanelTitle,
+  PanelDescription,
+} from "@/components/ui/panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -20,7 +27,10 @@ export function ProductEditor({ id }: { id?: string }) {
   const hasPrerequisites = !!categories.data?.length && !!units.data?.length;
   return (
     <>
-      <Link className="back-link" href={id ? `/produtos/${id}` : "/produtos"}>
+      <Link
+        className="mb-6 inline-flex items-center gap-[7px] text-[12px] text-[#708373]"
+        href={id ? `/produtos/${id}` : "/produtos"}
+      >
         <ArrowLeft size={15} />
         Voltar {id ? "ao produto" : "aos produtos"}
       </Link>
@@ -54,28 +64,25 @@ export function ProductEditor({ id }: { id?: string }) {
       ) : (
         <>
           {!hasPrerequisites && (
-            <div className="notice notice-info">
-              <p>
+            <Notice>
+              <NoticeDescription>
                 Antes de cadastrar produtos, crie pelo menos uma{" "}
-                <Link className="underline" href="/categorias">
-                  categoria
-                </Link>{" "}
-                e uma{" "}
-                <Link className="underline" href="/unidades-medida">
-                  unidade de medida
-                </Link>
-                .
-              </p>
-            </div>
+                <Link href="/categorias">categoria</Link> e uma{" "}
+                <Link href="/unidades-medida">unidade de medida</Link>.
+              </NoticeDescription>
+            </Notice>
           )}
-          <div className="panel form-panel">
-            <div className="panel-header">
+          <Panel className="max-w-[860px]">
+            <PanelHeader>
               <div>
-                <h2>Informações do produto</h2>
-                <p>Campos com * são obrigatórios.</p>
+                <PanelTitle>Informações do produto</PanelTitle>
+                <PanelDescription>
+                  Campos com * são obrigatórios.
+                </PanelDescription>
               </div>
-            </div>
+            </PanelHeader>
             <RecordForm
+              layout="page"
               resource="products"
               initial={id ? product.data : undefined}
               disabled={!hasPrerequisites}
@@ -95,8 +102,8 @@ export function ProductEditor({ id }: { id?: string }) {
                 router.push(`/produtos/${saved.id || id}`);
               }}
             />
-          </div>
-          <p className="subtle mt-5">
+          </Panel>
+          <p className="text-[12px] text-muted">
             Salve o produto para habilitar o cadastro de SKUs, vínculos com
             lojas e preços.
           </p>

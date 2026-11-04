@@ -1,4 +1,5 @@
 "use client";
+import { FormActions } from "@/components/ui/form-actions";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -69,12 +70,12 @@ export function DeleteDialog({
             : "Excluir registro?"}
         </DialogTitle>
         <DialogDescription>
-          Confirme a remoção de <span className="delete-name">{name}</span>.
+          Confirme a remoção de <span className="font-semibold">{name}</span>.
           Esta ação não pode ser desfeita. Registros referenciados podem ter a
           exclusão bloqueada pelo backend.
         </DialogDescription>
         {!!error && <ErrorNotice error={error} />}
-        <div className="form-actions">
+        <FormActions>
           <Button
             variant="outline"
             onClick={onClose}
@@ -90,7 +91,7 @@ export function DeleteDialog({
                 ? "Desvincular"
                 : "Excluir"}
           </Button>
-        </div>
+        </FormActions>
       </DialogContent>
     </Dialog>
   );

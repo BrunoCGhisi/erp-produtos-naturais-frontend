@@ -6,15 +6,19 @@ const product = "11111111-1111-4111-8111-111111111111",
 beforeEach(() => client.setConfig({ baseURL: "" }));
 afterEach(() => vi.restoreAllMocks());
 function transport() {
-  return vi
-    .spyOn(defaultTransport, "request")
-    .mockResolvedValue({
-      status: 201,
-      data: { id: product },
-      headers: { "content-type": "application/json" },
-      config: {},
-    });
+  return vi.spyOn(defaultTransport, "request").mockResolvedValue({
+    status: 201,
+    data: { id: product },
+    headers: { "content-type": "application/json" },
+    config: {},
+  });
 }
+function parseRequestBody(data: unknown) {
+  if (typeof data !== "string")
+    throw new Error("Expected a serialized JSON request body.");
+  return JSON.parse(data);
+}
+
 describe("integração com os clientes gerados", () => {
   it("aplica os padrões ATIVO e UNIDADE ao criar produto", async () => {
     const request = transport();
@@ -29,7 +33,7 @@ describe("integração com os clientes gerados", () => {
     expect(config.url).toBe("/api/produtos");
     expect(config.baseURL).toBe("");
     expect(config.method).toBe("POST");
-    expect(JSON.parse(config.data)).toMatchObject({
+    expect(parseRequestBody(config.data)).toMatchObject({
       status: "ATIVO",
       tipoVenda: "UNIDADE",
     });
@@ -48,7 +52,7 @@ describe("integração com os clientes gerados", () => {
     const config = request.mock.calls[0][0];
     expect(config.method).toBe("PUT");
     expect(config.url).toBe(`/api/produtos/${product}`);
-    expect(JSON.parse(config.data)).toEqual(values);
+    expect(parseRequestBody(config.data)).toEqual(values);
   });
   it("salva preço e validade em operação própria", async () => {
     const request = transport();
@@ -61,7 +65,7 @@ describe("integração com os clientes gerados", () => {
     });
     const config = request.mock.calls[0][0];
     expect(config.url).toBe("/api/produtos-precos-loja");
-    expect(JSON.parse(config.data)).toEqual({
+    expect(parseRequestBody(config.data)).toEqual({
       idProduto: product,
       idLoja: store,
       preco: 1234.56,

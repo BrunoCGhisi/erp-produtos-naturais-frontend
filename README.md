@@ -2,21 +2,25 @@
 
 Frontend administrativo em português para o catálogo de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
 
-## Estado da entrega local
+## Estado da implementação
 
-O código e as suítes estão implementados. **Esta entrega ainda não está validada integralmente.** Durante a implementação, o ambiente não resolveu GitHub/npm, proibiu escrita no diretório `.git` e não permitiu abrir a porta do servidor local (`listen EPERM`). Não havia conteúdo de aplicação no destino antes da criação dos arquivos.
+Catálogo implementado na branch `feat/catalog`, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md).
 
-- ESLint: passou, sem erros ou avisos.
-- 32 testes de validação, conversão, erros, clientes gerados e proxy: passaram com Node 24 e Vitest 3.2.7 disponível no cache. O manifesto solicita Vitest 4; a instalação completa não pôde ser concluída.
-- Playwright: 18 cenários descobertos (9 por viewport). Execução bloqueada ao iniciar o servidor local.
-- Testing Library e atualização de queries: testes escritos, execução pendente por dependências indisponíveis.
-- TypeScript e build: tentados; bloqueados pelos pacotes ausentes. A checagem parcial não substitui uma compilação completa.
-- Backend descartável: extraído de `e0f312e` em `/tmp`; o Maven offline falhou porque o parent Spring Boot 4.1.1 não estava no cache. Smoke real pendente.
-- **`package-lock.json` pendente:** a tentativa de gerar o lock falhou sem acesso ao registro npm. Gere e versione o arquivo numa máquina conectada antes de considerar esta versão pronta. Não foi criado um lock parcial ou fictício.
+Verificações locais concluídas em 04/11/2026, com Node 24:
+
+- ESLint e TypeScript passaram.
+- Vitest: 39 testes passaram, incluindo Testing Library e atualização de queries.
+- Playwright: os 18 cenários desktop/mobile passaram; os dois fluxos completos passaram em uma execução direcionada após correções nos seletores e na espera pela navegação dos testes.
+- Build de produção passou em uma cópia isolada do projeto para preservar o servidor de desenvolvimento aberto.
+- Comparação visual: 55 capturas antes/depois do refactor, sem diferenças de geometria; 49 idênticas em pixels. Os seis casos restantes tiveram diferenças pequenas de rasterização/texto (até 96 pixels por captura). Os limites responsivos também foram conferidos em 390, 720, 721, 1050, 1051 e 1600 px.
+
+**Pendências:** smoke contra backend real descartável, lockfile portável/versionado e confirmação da CI no commit atualizado. A tentativa inicial de iniciar o backend parou no Maven offline por ausência do parent Spring Boot 4.1.1. As restrições iniciais de rede e Git foram resolvidas posteriormente; elas não impedem mais o envio da branch.
+
+O `package-lock.json` local, que já existia antes do refactor, referencia um registro npm privado e ainda não faz parte da entrega versionada. Normalize-o para um registro acessível aos colaboradores e valide uma instalação limpa antes de versionar o arquivo e trocar a CI para `npm ci`.
 
 ## Executar
 
-Use Node.js 24 (`nvm use`) e npm. Após restabelecer acesso ao registro:
+Use Node.js 24 (`nvm use`) e npm:
 
 ```bash
 npm install
@@ -24,7 +28,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abra http://localhost:3000. A raiz redireciona para `/produtos`. Após gerar o primeiro lock, use `npm ci` em instalações reproduzíveis e substitua `npm install` por `npm ci` na CI. Dependências copiadas do cache durante a implementação não representam uma instalação completa do manifesto; execute `npm install` antes de iniciar.
+Abra http://localhost:3000. A raiz redireciona para `/produtos`. Após gerar o primeiro lock, use `npm ci` em instalações reproduzíveis e substitua `npm install` por `npm ci` na CI. Execute `npm install` antes de iniciar em uma instalação nova.
 
 `BACKEND_API_URL=http://localhost:8080` é uma variável **somente do servidor** e deve conter a origem do backend. Reinicie o Next.js após alterá-la. Não use `NEXT_PUBLIC_` nem aponte para Render ao testar mutações.
 
@@ -36,7 +40,7 @@ Integração de referência: [`Zayma1/erp-produtos-naturais-backend`](https://gi
 
 O SDK não foi alterado. `components/providers.tsx` sobrescreve sua origem padrão antes dos componentes consumidores. Como as URLs geradas já começam em `/api`, `baseURL` deve ser vazio para chamadas de mesma origem. Não importe clientes em novos pontos sem usar essa configuração.
 
-Verifique a referência remota quando houver conectividade:
+A referência remota `novaVersao` foi conferida em 04/11/2026 e continua no commit de integração. Para conferir novamente:
 
 ```bash
 git ls-remote https://github.com/Zayma1/erp-produtos-naturais-backend.git refs/heads/novaVersao
@@ -99,4 +103,4 @@ O script chama o proxy, cria e relê categoria, unidade, loja, produto, SKU, ví
 
 ## Repositório de destino
 
-Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend). A branch de entrega é `feat/catalog`, preparada pelo usuário a partir do estado de `master`; a base local inspecionada é `657257d` (`Initial commit`). O remoto permaneceu inacessível por DNS na sessão de entrega, e `.git` permaneceu protegido contra escrita. Gere/versione o lock e conclua os checks em um ambiente conectado. Não use force push.
+Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend). A branch de entrega é `feat/catalog`, preparada pelo usuário a partir do estado de `master`; a base local inspecionada é `657257d` (`Initial commit`). A implementação inicial foi enviada no commit `1a4f0d2`. O refactor Tailwind e este handoff são a continuação dessa entrega. O smoke real e a instalação reproduzível ainda precisam ser concluídos; consulte o handoff para a sequência sugerida. Não use force push.

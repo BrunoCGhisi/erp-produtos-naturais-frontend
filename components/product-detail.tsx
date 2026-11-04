@@ -1,4 +1,13 @@
 "use client";
+import {
+  Panel,
+  PanelHeader,
+  PanelTitle,
+  PanelDescription,
+} from "@/components/ui/panel";
+import { Notice, NoticeDescription } from "@/components/ui/notice";
+import { Table, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Select } from "@/components/ui/input";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -111,20 +120,24 @@ function Relationships({
   return (
     <>
       {success && (
-        <p role="status" className="success">
+        <p
+          role="status"
+          className="mb-4 rounded-[7px] bg-[#eaf5e7] px-4 py-3 text-[12px] text-[#2d7445]"
+        >
           {success}
         </p>
       )}
       {stores.isError && (
         <ErrorNotice error={stores.error} retry={() => void stores.refetch()} />
       )}
-      <section className="panel">
-        <div className="panel-header">
+      <Panel as="section">
+        <PanelHeader>
           <div>
-            <h2>{labels.title}</h2>
-            <p>{labels.description}</p>
+            <PanelTitle>{labels.title}</PanelTitle>
+            <PanelDescription>{labels.description}</PanelDescription>
           </div>
           <Button
+            className="mobile:px-[11px] mobile:py-2 mobile:text-[11px]"
             disabled={cannotAdd}
             onClick={() => {
               setSuccess("");
@@ -134,17 +147,14 @@ function Relationships({
             <Plus size={15} />
             {labels.new}
           </Button>
-        </div>
+        </PanelHeader>
         {resource !== "skus" && stores.isSuccess && !stores.data.length && (
-          <div className="notice notice-info m-5">
-            <p>
-              Cadastre uma{" "}
-              <Link href="/lojas" className="underline">
-                loja
-              </Link>{" "}
-              antes de criar vínculos ou preços.
-            </p>
-          </div>
+          <Notice className="m-5">
+            <NoticeDescription>
+              Cadastre uma <Link href="/lojas">loja</Link> antes de criar
+              vínculos ou preços.
+            </NoticeDescription>
+          </Notice>
         )}
         {query.isPending ? (
           <Loading />
@@ -167,91 +177,95 @@ function Relationships({
             description="Adicione um registro para continuar. Cada operação é salva separadamente."
           />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
+          <Table>
+            <thead>
+              <TableRow>
+                {resource === "skus" ? (
+                  <>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>APRESENTAÇÃO</TableHead>
+                    <TableHead>EAN-13 / DUN-14</TableHead>
+                    <TableHead>STATUS</TableHead>
+                  </>
+                ) : resource === "assignments" ? (
+                  <TableHead>LOJA</TableHead>
+                ) : (
+                  <>
+                    <TableHead>LOJA</TableHead>
+                    <TableHead>PREÇO</TableHead>
+                    <TableHead>INÍCIO DA VALIDADE</TableHead>
+                    <TableHead>FIM DA VALIDADE</TableHead>
+                  </>
+                )}
+                <TableHead className="text-right">AÇÕES</TableHead>
+              </TableRow>
+            </thead>
+            <tbody>
+              {rows.map((row: RelationRow) => (
+                <TableRow key={row.id}>
                   {resource === "skus" ? (
                     <>
-                      <th>SKU</th>
-                      <th>APRESENTAÇÃO</th>
-                      <th>EAN-13 / DUN-14</th>
-                      <th>STATUS</th>
+                      <TableCell className="font-semibold text-[#304b36] hover:underline">
+                        {row.sku}
+                      </TableCell>
+                      <TableCell>{row.descricaoApresentacao || "—"}</TableCell>
+                      <TableCell>
+                        {row.ean13 || "—"}
+                        <br />
+                        {row.dun14 || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Status value={row.status} />
+                      </TableCell>
                     </>
                   ) : resource === "assignments" ? (
-                    <th>LOJA</th>
+                    <TableCell className="font-semibold text-[#304b36] hover:underline">
+                      {storeName(row)}
+                    </TableCell>
                   ) : (
                     <>
-                      <th>LOJA</th>
-                      <th>PREÇO</th>
-                      <th>INÍCIO DA VALIDADE</th>
-                      <th>FIM DA VALIDADE</th>
+                      <TableCell className="font-semibold text-[#304b36] hover:underline">
+                        {storeName(row)}
+                      </TableCell>
+                      <TableCell>{currency(row.preco)}</TableCell>
+                      <TableCell>{dateLabel(row.dataInicio)}</TableCell>
+                      <TableCell>{dateLabel(row.dataFim)}</TableCell>
                     </>
                   )}
-                  <th className="text-right">AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row: RelationRow) => (
-                  <tr key={row.id}>
-                    {resource === "skus" ? (
-                      <>
-                        <td className="row-title">{row.sku}</td>
-                        <td>{row.descricaoApresentacao || "—"}</td>
-                        <td>
-                          {row.ean13 || "—"}
-                          <br />
-                          {row.dun14 || "—"}
-                        </td>
-                        <td>
-                          <Status value={row.status} />
-                        </td>
-                      </>
-                    ) : resource === "assignments" ? (
-                      <td className="row-title">{storeName(row)}</td>
-                    ) : (
-                      <>
-                        <td className="row-title">{storeName(row)}</td>
-                        <td>{currency(row.preco)}</td>
-                        <td>{dateLabel(row.dataInicio)}</td>
-                        <td>{dateLabel(row.dataFim)}</td>
-                      </>
-                    )}
-                    <td>
-                      <div className="actions">
-                        {resource !== "assignments" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Editar ${resource === "skus" ? row.sku : "preço"}`}
-                            onClick={() => setEdit(row)}
-                          >
-                            <Pencil size={15} />
-                          </Button>
-                        )}
+                  <TableCell>
+                    <div className="flex justify-end gap-[3px] [&_button]:text-[#7a887e] [&_button:hover]:text-[#9a3935] mobile:[&_[data-slot=button]]:p-[5px]">
+                      {resource !== "assignments" && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={
-                            resource === "assignments"
-                              ? `Desvincular ${storeName(row)}`
-                              : resource === "skus"
-                                ? `Excluir ${row.sku}`
-                                : "Excluir preço"
-                          }
-                          onClick={() => setRemove(row)}
+                          aria-label={`Editar ${resource === "skus" ? row.sku : "preço"}`}
+                          onClick={() => setEdit(row)}
                         >
-                          <Trash2 size={15} />
+                          <Pencil size={15} />
                         </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={
+                          resource === "assignments"
+                            ? `Desvincular ${storeName(row)}`
+                            : resource === "skus"
+                              ? `Excluir ${row.sku}`
+                              : "Excluir preço"
+                        }
+                        onClick={() => setRemove(row)}
+                      >
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </tbody>
+          </Table>
         )}
-      </section>
+      </Panel>
       {edit !== undefined && (
         <RecordModal
           key={`${resource}-${edit?.id || "new"}`}
@@ -320,7 +334,10 @@ export function ProductDetail({ id }: { id: string }) {
   const product = query.data;
   return (
     <>
-      <Link className="back-link" href="/produtos">
+      <Link
+        className="mb-6 inline-flex items-center gap-[7px] text-[12px] text-[#708373]"
+        href="/produtos"
+      >
         <ArrowLeft size={15} />
         Voltar aos produtos
       </Link>
@@ -336,35 +353,53 @@ export function ProductDetail({ id }: { id: string }) {
           </Button>
         }
       />
-      <div className="panel">
-        <div className="panel-header">
-          <h2>Informações do produto</h2>
+      <Panel>
+        <PanelHeader>
+          <PanelTitle>Informações do produto</PanelTitle>
           <Status value={product.status} />
-        </div>
-        <dl className="detail-summary">
+        </PanelHeader>
+        <dl className="grid grid-cols-4 gap-5 p-[25px] compact:grid-cols-2 mobile:p-5">
           <div>
-            <dt>Categoria</dt>
-            <dd>{product.nomeCategoria || "—"}</dd>
+            <dt className="mb-[5px] text-[10px] tracking-[0.6px] text-[#829083] uppercase">
+              Categoria
+            </dt>
+            <dd className="m-0 text-[13px] text-[#38533e]">
+              {product.nomeCategoria || "—"}
+            </dd>
           </div>
           <div>
-            <dt>Unidade de medida</dt>
-            <dd>{product.siglaUnidadeMedida || "—"}</dd>
+            <dt className="mb-[5px] text-[10px] tracking-[0.6px] text-[#829083] uppercase">
+              Unidade de medida
+            </dt>
+            <dd className="m-0 text-[13px] text-[#38533e]">
+              {product.siglaUnidadeMedida || "—"}
+            </dd>
           </div>
           <div>
-            <dt>Tipo de venda</dt>
-            <dd>{product.tipoVenda === "PESO" ? "Peso" : "Unidade"}</dd>
+            <dt className="mb-[5px] text-[10px] tracking-[0.6px] text-[#829083] uppercase">
+              Tipo de venda
+            </dt>
+            <dd className="m-0 text-[13px] text-[#38533e]">
+              {product.tipoVenda === "PESO" ? "Peso" : "Unidade"}
+            </dd>
           </div>
           <div>
-            <dt>Identificador</dt>
-            <dd className="break-all">{product.id}</dd>
+            <dt className="mb-[5px] text-[10px] tracking-[0.6px] text-[#829083] uppercase">
+              Identificador
+            </dt>
+            <dd className="m-0 text-[13px] text-[#38533e] break-all">
+              {product.id}
+            </dd>
           </div>
         </dl>
         {product.descricao && (
-          <p className="detail-description">{product.descricao}</p>
+          <p className="px-[25px] pb-[25px] text-[13px] whitespace-pre-wrap text-[#718073]">
+            {product.descricao}
+          </p>
         )}
-      </div>
-      <Tabs className="tabs" value={tab} onValueChange={setTab}>
-        <TabsList className="tabs-list" aria-label="Dados do produto">
+      </Panel>
+      <Tabs className="mt-[26px]" value={tab} onValueChange={setTab}>
+        <TabsList aria-label="Dados do produto">
           <TabsTrigger value="skus">
             <Barcode size={16} />
             SKUs
@@ -379,9 +414,14 @@ export function ProductDetail({ id }: { id: string }) {
           </TabsTrigger>
         </TabsList>
         {tab !== "skus" && (
-          <div className="relationship-filter field">
-            <label htmlFor="store-filter">Filtrar por loja</label>
-            <select
+          <div className="mb-[18px] flex max-w-[280px] flex-col gap-[7px]">
+            <label
+              className="text-[12px] font-semibold text-[#49614e]"
+              htmlFor="store-filter"
+            >
+              Filtrar por loja
+            </label>
+            <Select
               id="store-filter"
               value={storeId}
               onChange={(e) => setStoreId(e.target.value)}
@@ -392,7 +432,7 @@ export function ProductDetail({ id }: { id: string }) {
                   {x.nomeFantasia}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         {(["skus", "assignments", "prices"] as const).map((resource) => (

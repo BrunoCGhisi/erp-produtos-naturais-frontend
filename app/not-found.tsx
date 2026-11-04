@@ -1,12 +1,16 @@
 import Link from "next/link";
+import { EmptyState, PageTitle } from "@/components/feedback";
+import { Button } from "@/components/ui/button";
 export default function NotFound() {
   return (
-    <div className="empty">
-      <h1>Página não encontrada</h1>
-      <p>O endereço solicitado não está disponível.</p>
-      <Link className="button button-primary" href="/produtos">
-        Voltar aos produtos
-      </Link>
-    </div>
+    <EmptyState>
+      <PageTitle>Página não encontrada</PageTitle>
+      <p className="max-w-[400px] text-[12px]">
+        O endereço solicitado não está disponível.
+      </p>
+      <Button asChild>
+        <Link href="/produtos">Voltar aos produtos</Link>
+      </Button>
+    </EmptyState>
   );
 }

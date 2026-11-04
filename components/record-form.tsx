@@ -1,4 +1,7 @@
 "use client";
+import { Select, Textarea, Input } from "@/components/ui/input";
+import { FormActions } from "@/components/ui/form-actions";
+import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useId, useEffect } from "react";
@@ -30,6 +33,7 @@ export function RecordForm({
   onCancel,
   disabled = false,
   onBusyChange,
+  layout = "dialog",
 }: {
   resource: Resource;
   initial?: Record<string, unknown>;
@@ -39,6 +43,7 @@ export function RecordForm({
   onCancel: () => void;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  layout?: "dialog" | "page";
 }) {
   const formId = useId();
   const queryClient = useQueryClient();
@@ -83,7 +88,12 @@ export function RecordForm({
   return (
     <form onSubmit={submit} noValidate aria-busy={isSubmitting}>
       {!!requestError && <ErrorNotice error={requestError} />}
-      <div className="form-grid">
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-5 mobile:grid-cols-1 mobile:gap-[17px]",
+          layout === "page" && "p-7 mobile:p-5",
+        )}
+      >
         {(fields[resource] as Field[]).map((f) => {
           const id = `${formId}-${f.name}`,
             options = fieldOptions[f.name] || f.options;
@@ -102,25 +112,34 @@ export function RecordForm({
           return (
             <div
               key={f.name}
-              className={`field ${f.type === "textarea" || f.name === "nome" || f.name === "sku" ? "full" : ""}`}
+              className={cn(
+                "flex flex-col gap-[7px]",
+                (f.type === "textarea" ||
+                  f.name === "nome" ||
+                  f.name === "sku") &&
+                  "col-span-full",
+              )}
             >
-              <label htmlFor={id}>
+              <label
+                className="text-[12px] font-semibold text-[#49614e]"
+                htmlFor={id}
+              >
                 {f.label}
                 {!f.optional && <span aria-hidden="true"> *</span>}
               </label>
               {f.type === "select" ? (
-                <select {...attrs}>
+                <Select {...attrs}>
                   <option value="">Selecione…</option>
                   {options?.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : f.type === "textarea" ? (
-                <textarea {...attrs} />
+                <Textarea {...attrs} />
               ) : (
-                <input
+                <Input
                   {...attrs}
                   type={f.type || "text"}
                   inputMode={
@@ -132,9 +151,13 @@ export function RecordForm({
                   }
                 />
               )}
-              {f.hint && <small id={`${id}-hint`}>{f.hint}</small>}
+              {f.hint && (
+                <small className="text-[11px] text-[#7b887e]" id={`${id}-hint`}>
+                  {f.hint}
+                </small>
+              )}
               {errors[f.name] && (
-                <p id={`${id}-error`} className="field-error">
+                <p id={`${id}-error`} className="text-[11px] text-[#a53b33]">
                   {errors[f.name]?.message}
                 </p>
               )}
@@ -142,7 +165,11 @@ export function RecordForm({
           );
         })}
       </div>
-      <div className="form-actions">
+      <FormActions
+        className={
+          layout === "page" ? "m-0 px-7 py-5 mobile:p-[17px]" : undefined
+        }
+      >
         <Button
           type="button"
           variant="outline"
@@ -152,10 +179,10 @@ export function RecordForm({
           Cancelar
         </Button>
         <Button type="submit" disabled={isSubmitting || disabled}>
-          {isSubmitting && <LoaderCircle size={16} className="spin" />}
+          {isSubmitting && <LoaderCircle size={16} className="animate-spin" />}
           {isSubmitting ? "Salvando…" : "Salvar"}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

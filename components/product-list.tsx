@@ -1,4 +1,13 @@
 "use client";
+import {
+  Panel,
+  PanelHeader,
+  PanelTitle,
+  PanelDescription,
+} from "@/components/ui/panel";
+import { Badge } from "@/components/ui/badge";
+import { Input, Select } from "@/components/ui/input";
+import { Table, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
@@ -81,7 +90,7 @@ export function ProductList() {
           </Button>
         }
       />
-      <div className="summary-grid">
+      <div className="mb-7 grid grid-cols-3 gap-[18px] mobile:mb-5 mobile:gap-2">
         {[
           {
             title: "Total de produtos",
@@ -101,19 +110,29 @@ export function ProductList() {
             icon: Tags,
           },
         ].map(({ title, value, icon: Icon }) => (
-          <div className="summary-card" key={title}>
+          <div
+            className="flex items-center justify-between rounded-[10px] border border-border bg-white px-[22px] py-5 compact:p-[17px] mobile:px-[11px] mobile:py-[13px]"
+            key={title}
+          >
             <div>
-              <p>{title}</p>
-              <strong>{value}</strong>
+              <p className="text-[11px] text-[#77837a] mobile:text-[9px]">
+                {title}
+              </p>
+              <strong className="mt-[5px] block text-[27px] font-semibold tracking-[-0.7px] mobile:text-[23px]">
+                {value}
+              </strong>
             </div>
-            <span className="summary-icon">
+            <span className="flex rounded-[10px] bg-[#f0f5ed] p-[11px] text-[#6b926c] mobile:hidden">
               <Icon size={22} />
             </span>
           </div>
         ))}
       </div>
       {success && (
-        <p role="status" className="success">
+        <p
+          role="status"
+          className="mb-4 rounded-[7px] bg-[#eaf5e7] px-4 py-3 text-[12px] text-[#2d7445]"
+        >
           {success}
         </p>
       )}
@@ -123,27 +142,34 @@ export function ProductList() {
           retry={() => void categories.refetch()}
         />
       )}
-      <section className="panel" aria-label="Catálogo de produtos">
-        <div className="panel-header">
+      <Panel as="section" aria-label="Catálogo de produtos">
+        <PanelHeader>
           <div>
-            <h2>Seu catálogo</h2>
-            <p>Todos os produtos, em um só lugar.</p>
+            <PanelTitle>Seu catálogo</PanelTitle>
+            <PanelDescription>
+              Todos os produtos, em um só lugar.
+            </PanelDescription>
           </div>
-          <span className="badge badge-gray">
+          <Badge>
             {query.isSuccess ? `${all.length} produtos` : "Produtos"}
-          </span>
-        </div>
-        <div className="toolbar">
-          <div className="search-box">
-            <Search size={16} />
-            <input
+          </Badge>
+        </PanelHeader>
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-[23px] py-[19px] mobile:gap-[9px] mobile:p-[15px]">
+          <div className="relative min-w-[190px] flex-1 mobile:basis-full">
+            <Search
+              className="absolute top-3 left-3 text-[#8a968c]"
+              size={16}
+            />
+            <Input
+              className="pl-9"
               aria-label="Buscar produtos"
               placeholder="Buscar por nome do produto…"
               value={search}
               onChange={(e) => control("busca", e.target.value)}
             />
           </div>
-          <select
+          <Select
+            className="w-auto max-w-[190px] text-[12px] mobile:w-[30%] mobile:max-w-none mobile:flex-1 mobile:text-[11px]"
             aria-label="Filtrar por categoria"
             value={category}
             onChange={(e) => control("categoria", e.target.value)}
@@ -154,8 +180,9 @@ export function ProductList() {
                 {x.nome}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
+            className="w-auto max-w-[190px] text-[12px] mobile:w-[30%] mobile:max-w-none mobile:flex-1 mobile:text-[11px]"
             aria-label="Filtrar por status"
             value={status}
             onChange={(e) => control("status", e.target.value)}
@@ -163,15 +190,16 @@ export function ProductList() {
             <option value="">Todos os status</option>
             <option value="ATIVO">Ativo</option>
             <option value="INATIVO">Inativo</option>
-          </select>
-          <select
+          </Select>
+          <Select
+            className="w-auto max-w-[190px] text-[12px] mobile:w-[30%] mobile:max-w-none mobile:flex-1 mobile:text-[11px]"
             aria-label="Ordenar produtos"
             value={sort}
             onChange={(e) => control("ordem", e.target.value)}
           >
             <option value="asc">Nome: A–Z</option>
             <option value="desc">Nome: Z–A</option>
-          </select>
+          </Select>
         </div>
         {query.isPending ? (
           <Loading />
@@ -192,92 +220,92 @@ export function ProductList() {
             }
           />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>PRODUTO</th>
-                  <th>CATEGORIA</th>
-                  <th>UNIDADE</th>
-                  <th>TIPO DE VENDA</th>
-                  <th>STATUS</th>
-                  <th className="text-right">AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <div className="product-cell">
-                        <span className="product-icon">
-                          <Leaf size={17} />
-                        </span>
-                        <div>
-                          <Link
-                            className="row-title"
-                            href={`/produtos/${row.id}`}
-                          >
-                            {row.nome}
-                          </Link>
-                          <small className="row-id">
-                            #{row.id?.slice(0, 8)}
-                          </small>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      {row.nomeCategoria ||
-                        categories.data?.find((x) => x.id === row.idCategoria)
-                          ?.nome ||
-                        "—"}
-                    </td>
-                    <td>{row.siglaUnidadeMedida || "—"}</td>
-                    <td>{row.tipoVenda === "PESO" ? "Peso" : "Unidade"}</td>
-                    <td>
-                      <Status value={row.status} />
-                    </td>
-                    <td>
-                      <div className="actions">
-                        <Button asChild variant="ghost" size="icon">
-                          <Link
-                            aria-label={`Abrir ${row.nome}`}
-                            href={`/produtos/${row.id}`}
-                          >
-                            <ArrowUpRight size={16} />
-                          </Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="icon">
-                          <Link
-                            aria-label={`Editar ${row.nome}`}
-                            href={`/produtos/${row.id}/editar`}
-                          >
-                            <Pencil size={14} />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Excluir ${row.nome}`}
-                          onClick={() => setRemove(row)}
+          <Table>
+            <thead>
+              <TableRow>
+                <TableHead>PRODUTO</TableHead>
+                <TableHead>CATEGORIA</TableHead>
+                <TableHead>UNIDADE</TableHead>
+                <TableHead>TIPO DE VENDA</TableHead>
+                <TableHead>STATUS</TableHead>
+                <TableHead className="text-right">AÇÕES</TableHead>
+              </TableRow>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-[35px] min-w-[35px] items-center justify-center rounded-lg bg-[#f0f5ed] text-[#799971]">
+                        <Leaf size={17} />
+                      </span>
+                      <div>
+                        <Link
+                          className="font-semibold text-[#304b36] hover:underline"
+                          href={`/produtos/${row.id}`}
                         >
-                          <Trash2 size={15} />
-                        </Button>
+                          {row.nome}
+                        </Link>
+                        <small className="mt-[3px] block text-[10px] text-[#8f998f]">
+                          #{row.id?.slice(0, 8)}
+                        </small>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {row.nomeCategoria ||
+                      categories.data?.find((x) => x.id === row.idCategoria)
+                        ?.nome ||
+                      "—"}
+                  </TableCell>
+                  <TableCell>{row.siglaUnidadeMedida || "—"}</TableCell>
+                  <TableCell>
+                    {row.tipoVenda === "PESO" ? "Peso" : "Unidade"}
+                  </TableCell>
+                  <TableCell>
+                    <Status value={row.status} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-[3px] [&_button]:text-[#7a887e] [&_button:hover]:text-[#9a3935] mobile:[&_[data-slot=button]]:p-[5px]">
+                      <Button asChild variant="ghost" size="icon">
+                        <Link
+                          aria-label={`Abrir ${row.nome}`}
+                          href={`/produtos/${row.id}`}
+                        >
+                          <ArrowUpRight size={16} />
+                        </Link>
+                      </Button>
+                      <Button asChild variant="ghost" size="icon">
+                        <Link
+                          aria-label={`Editar ${row.nome}`}
+                          href={`/produtos/${row.id}/editar`}
+                        >
+                          <Pencil size={14} />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Excluir ${row.nome}`}
+                        onClick={() => setRemove(row)}
+                      >
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </tbody>
+          </Table>
         )}
         {query.isSuccess && (
-          <div className="pagination">
+          <div className="flex items-center justify-between gap-3 border-t border-border px-[23px] py-4 text-[11px] text-[#839083] mobile:flex-col mobile:items-start mobile:p-3.5">
             <span>
               {filtered.length
                 ? `${(page - 1) * 20 + 1}–${Math.min(page * 20, filtered.length)} de ${filtered.length} produtos`
                 : "0 produtos"}
             </span>
-            <div className="pagination-controls">
+            <div className="flex items-center gap-3 mobile:w-full mobile:justify-between">
               <Button
                 variant="outline"
                 size="sm"
@@ -302,7 +330,7 @@ export function ProductList() {
             </div>
           </div>
         )}
-      </section>
+      </Panel>
       {remove?.id && (
         <DeleteDialog
           resource="products"

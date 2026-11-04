@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body>
+    <html lang="pt-BR" className="[color-scheme:light]">
+      <body className="bg-background font-sans text-sm leading-normal text-foreground">
         <Providers>
           <Shell>{children}</Shell>
         </Providers>

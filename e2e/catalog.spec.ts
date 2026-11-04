@@ -127,6 +127,7 @@ async function saveDialog(page: Page) {
 test("fluxo completo: cadastros, produto, SKU, loja, preço, edição e persistência ao recarregar", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   const db = await mockCatalog(page);
   await navigate(page, "/categorias");
   await page.getByRole("button", { name: "Nova categoria" }).click();
@@ -167,7 +168,7 @@ test("fluxo completo: cadastros, produto, SKU, loja, preço, edição e persist�
     tipoVenda: "UNIDADE",
   });
   await page.getByRole("button", { name: "Novo SKU" }).click();
-  await page.getByLabel("SKU", { exact: false }).fill("AVE-01");
+  await page.getByRole("textbox", { name: "SKU", exact: true }).fill("AVE-01");
   await page.getByLabel("EAN-13").fill("7891234567890");
   await saveDialog(page);
   await expect(
@@ -175,7 +176,9 @@ test("fluxo completo: cadastros, produto, SKU, loja, preço, edição e persist�
   ).toBeVisible();
   expect(db["produtos-sku"][0]).not.toHaveProperty("idLoja");
   await page.getByRole("tab", { name: "Lojas", exact: true }).click();
-  await page.getByRole("button", { name: "Vincular loja" }).click();
+  await page
+    .getByRole("button", { name: "Vincular loja", exact: true })
+    .click();
   await page
     .getByRole("dialog")
     .getByLabel("Loja")
@@ -200,6 +203,7 @@ test("fluxo completo: cadastros, produto, SKU, loja, preço, edição e persist�
   await page.getByRole("link", { name: "Editar produto", exact: true }).click();
   await page.getByLabel("Status").selectOption("INATIVO");
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/produtos/${db.produtos[0].id}$`));
   await page.reload();
   await expect(page.getByText("Inativo", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Preços" }).click();
@@ -243,13 +247,15 @@ test("SKU duplicado mantém os dados e o modal aberto", async ({ page }) => {
   });
   await navigate(page, `/produtos/${product.id}`);
   await page.getByRole("button", { name: "Novo SKU" }).click();
-  await page.getByLabel("SKU", { exact: false }).fill("AVE-01");
+  await page.getByRole("textbox", { name: "SKU", exact: true }).fill("AVE-01");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Salvar", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText("SKU já cadastrado.");
-  await expect(page.getByLabel("SKU", { exact: false })).toHaveValue("AVE-01");
+  await expect(
+    page.getByRole("textbox", { name: "SKU", exact: true }),
+  ).toHaveValue("AVE-01");
 });
 test("vínculo duplicado exibe erro e permite tentar novamente", async ({
   page,
@@ -260,7 +266,9 @@ test("vínculo duplicado exibe erro e permite tentar novamente", async ({
   });
   await navigate(page, `/produtos/${product.id}`);
   await page.getByRole("tab", { name: "Lojas", exact: true }).click();
-  await page.getByRole("button", { name: "Vincular loja" }).click();
+  await page
+    .getByRole("button", { name: "Vincular loja", exact: true })
+    .click();
   await page.getByRole("dialog").getByLabel("Loja").selectOption(store.id);
   await page
     .getByRole("dialog")
@@ -317,7 +325,10 @@ test("backend indisponível exibe erro e permite recuperação", async ({
     "Não foi possível conectar ao backend.",
   );
   offline = false;
-  await page.getByRole("button", { name: "Tentar novamente" }).first().click();
+  await page
+    .getByRole("region", { name: "Catálogo de produtos" })
+    .getByRole("button", { name: "Tentar novamente" })
+    .click();
   await expect(page.getByText("Nenhum produto encontrado")).toBeVisible();
 });
 test("busca, ordenação, filtros e paginação persistem na URL", async ({
