@@ -7,3 +7,5 @@ out/
 playwright-report/
 test-results/
 coverage/
+playwright-live-report/
+integration-artifacts/

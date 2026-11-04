@@ -1,5 +1,7 @@
 // Run only against a disposable, local novaVersao backend. Never use shared Render.
 import assert from "node:assert/strict";
+if (process.env.CATALOG_DISPOSABLE !== "1")
+  throw new Error("Defina CATALOG_DISPOSABLE=1 somente após confirmar que o backend e o banco são descartáveis; uma URL loopback não garante isso.");
 const base = new URL(process.env.SMOKE_BASE_URL || "http://127.0.0.1:3000");
 if (!["localhost", "127.0.0.1", "[::1]"].includes(base.hostname))
   throw new Error(
