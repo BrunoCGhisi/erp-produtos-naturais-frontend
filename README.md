@@ -14,21 +14,19 @@ Verificações locais concluídas em 04/11/2026, com Node 24:
 - Build de produção passou em uma cópia isolada do projeto para preservar o servidor de desenvolvimento aberto.
 - Comparação visual: 55 capturas antes/depois do refactor, sem diferenças de geometria; 49 idênticas em pixels. Os seis casos restantes tiveram diferenças pequenas de rasterização/texto (até 96 pixels por captura). Os limites responsivos também foram conferidos em 390, 720, 721, 1050, 1051 e 1600 px.
 
-**Pendências:** smoke contra backend real descartável, lockfile portável/versionado e confirmação da CI no commit atualizado. A tentativa inicial de iniciar o backend parou no Maven offline por ausência do parent Spring Boot 4.1.1. As restrições iniciais de rede e Git foram resolvidas posteriormente; elas não impedem mais o envio da branch.
-
-O `package-lock.json` local, que já existia antes do refactor, referencia um registro npm privado e ainda não faz parte da entrega versionada. Normalize-o para um registro acessível aos colaboradores e valide uma instalação limpa antes de versionar o arquivo e trocar a CI para `npm ci`.
+Instalação limpa pelo registro público, smoke da API e Playwright real desktop/mobile passaram contra o backend fixado abaixo e PostgreSQL 16 descartável. A [CI de `67dadee`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41906754976) passou nos jobs `validate` e `integration`. Consulte o handoff para os commits, comandos e limitações.
 
 ## Executar
 
 Use Node.js 24 (`nvm use`) e npm:
 
 ```bash
-npm install
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-Abra http://localhost:3000. A raiz redireciona para `/produtos`. Após gerar o primeiro lock, use `npm ci` em instalações reproduzíveis e substitua `npm install` por `npm ci` na CI. Execute `npm install` antes de iniciar em uma instalação nova.
+Abra http://localhost:3000. A raiz redireciona para `/produtos`. O lockfile versionado usa `https://registry.npmjs.org`; use `npm ci` nas instalações e na CI.
 
 `BACKEND_API_URL=http://localhost:8080` é uma variável **somente do servidor** e deve conter a origem do backend. Reinicie o Next.js após alterá-la. Não use `NEXT_PUBLIC_` nem aponte para Render ao testar mutações.
 
@@ -46,25 +44,23 @@ A referência remota `novaVersao` foi conferida em 04/11/2026 e continua no comm
 git ls-remote https://github.com/Zayma1/erp-produtos-naturais-backend.git refs/heads/novaVersao
 ```
 
-Para um backend descartável, use Java 21, Maven e PostgreSQL local. Em outro diretório:
+## Integração descartável
+
+Pré-requisitos: Node.js 24, Java 21, Docker em execução, Git e acesso à internet (GitHub, Docker Hub e Maven Central). Instale as dependências e o Chromium:
 
 ```bash
-git clone --branch novaVersao https://github.com/Zayma1/erp-produtos-naturais-backend.git backend-demo
-cd backend-demo
-git checkout e0f312e611d56ab73a4a8e3d5832f8b8874ff362
-docker run --rm --name vila-verde-demo-db -p 127.0.0.1:5433:5432 \
-  -e POSTGRES_DB=vila_verde -e POSTGRES_USER=vila -e POSTGRES_PASSWORD=vila postgres:16
+npm ci
+npx playwright install --with-deps chromium
+npm run test:integration
 ```
 
-Em outro terminal, na pasta `backend-demo`:
+O comando busca o backend no commit exato acima em um diretório temporário, inicia um PostgreSQL 16 sem volume persistente com credenciais aleatórias e datasource substituído por variáveis de ambiente. Resolve o Maven online, aguarda a API, faz um build isolado do frontend e executa o smoke da API seguido do Playwright real, serial, em Chromium desktop e mobile. Não altera o checkout existente do backend nem depende de `.env.local`.
 
-```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/vila_verde \
-SPRING_DATASOURCE_USERNAME=vila SPRING_DATASOURCE_PASSWORD=vila \
-./mvnw spring-boot:run
-```
+As portas loopback **8081** (backend) e **3100** (frontend de produção) precisam estar livres; o comando falha se estiverem ocupadas e nunca reutiliza servidores. A porta do PostgreSQL é escolhida pelo Docker. Os processos e o banco pertencentes à execução são removidos ao terminar, inclusive em falhas e sinais SIGINT/SIGTERM. SIGKILL ou queda da máquina não permitem executar limpeza; nesse caso remova o container `vila-integration-*` restante com Docker.
 
-Isso substitui o datasource H2 indicado no `application.properties` da referência, que inclui o driver PostgreSQL no POM. Não há alterações necessárias no código da API. `ddl-auto=create` recria os dados quando o **backend** reinicia; recarregar o navegador deve preservar os dados durante a sessão do backend. Use apenas um banco descartável.
+Logs sem a senha temporária ficam em `integration-artifacts/`; relatório e traces de falha ficam em `playwright-live-report/` e `test-results/live/`. A CI possui um job separado com esses mesmos pré-requisitos e publica os artefatos em falhas.
+
+O backend usa `ddl-auto=create`: os dados precisam sobreviver à recarga do navegador, mas persistência após reiniciar o backend está fora deste marco.
 
 ## Fluxo
 
@@ -91,16 +87,16 @@ npm run test:e2e
 npm run build
 ```
 
-Os testes unitários cobrem schemas, enums, moeda, datas, mensagens reais `ApiError`, transporte dos clientes gerados, atualização de listas/detalhes/relacionamentos e a lista permitida do proxy. O Playwright intercepta a API com fixtures **apenas nos testes** e cobre desktop/mobile, fluxo completo, edição/exclusão, recarga, duplicidades, filtros, erros de backend, pré-requisitos vazios e foco por teclado. A CI em `.github/workflows/ci.yml` executa essas verificações; usa `npm install` até que o lock seja gerado e versionado.
+Os testes unitários cobrem schemas, enums, moeda, datas, mensagens reais `ApiError`, transporte dos clientes gerados, atualização de listas/detalhes/relacionamentos e a lista permitida do proxy. O Playwright intercepta a API com fixtures **apenas nos testes** e cobre desktop/mobile, fluxo completo, edição/exclusão, recarga, duplicidades, filtros, erros de backend, pré-requisitos vazios e foco por teclado. A CI em `.github/workflows/ci.yml` executa essas verificações com `npm ci`, além do job separado de integração real.
 
 Com backend **descartável** e frontend rodando localmente:
 
 ```bash
-npm run test:live
+CATALOG_DISPOSABLE=1 npm run test:live
 ```
 
-O script chama o proxy, cria e relê categoria, unidade, loja, produto, SKU, vínculo e preço, edita o produto e limpa os registros em ordem inversa. Aceita apenas origem loopback, por padrão `http://127.0.0.1:3000`. Use `SMOKE_BASE_URL` para mudar a porta local. A releitura da API complementa o teste de recarga do navegador; o smoke não substitui a verificação visual real.
+O script chama o proxy, cria e relê categoria, unidade, loja, produto, SKU, vínculo e preço, edita o produto e limpa os registros em ordem inversa. Aceita apenas origem loopback, por padrão `http://127.0.0.1:3000`. Use `SMOKE_BASE_URL` para mudar a porta local. A variável `CATALOG_DISPOSABLE=1` é obrigatória e declara que o backend e seu banco são descartáveis. **Uma URL frontend loopback sozinha não garante que o banco upstream seja descartável.** Prefira `npm run test:integration`, que cria e controla os serviços e fornece essa opção ao smoke. A suíte `e2e-live/` não intercepta requests e verifica cadastros pelo UI, edições, duplicidades, bloqueios por referência, saves independentes, moeda brasileira, datas e persistência após reload. Sua limpeza por API segue a ordem de dependências e falhas de limpeza reprovam o teste.
 
 ## Repositório de destino
 
-Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend). A branch de entrega é `feat/catalog`, preparada pelo usuário a partir do estado de `master`; a base local inspecionada é `657257d` (`Initial commit`). A implementação inicial foi enviada no commit `1a4f0d2`. O refactor Tailwind e este handoff são a continuação dessa entrega. O smoke real e a instalação reproduzível ainda precisam ser concluídos; consulte o handoff para a sequência sugerida. Não use force push.
+Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend). A branch de entrega é `feat/catalog`, preparada pelo usuário a partir do estado de `master`; a base local inspecionada é `657257d` (`Initial commit`). A implementação inicial foi enviada no commit `1a4f0d2`. O refactor Tailwind e este handoff são a continuação dessa entrega. A instalação reproduzível e o ambiente descartável estão automatizados; consulte o handoff para os resultados de execução. Não use force push.

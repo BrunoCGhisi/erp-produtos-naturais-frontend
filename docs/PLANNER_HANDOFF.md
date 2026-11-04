@@ -4,7 +4,7 @@ Data: 04/11/2026. Repositório: [BrunoCGhisi/erp-produtos-naturais-frontend](htt
 
 ## Resultado e aderência ao plano
 
-O MVP do catálogo está implementado. O frontend foi validado localmente com APIs interceptadas nos testes. **A integração ponta a ponta com o backend real ainda não foi validada**, e não há confirmação de CI verde para este refactor neste handoff.
+O MVP do catálogo está implementado e o fluxo foi validado contra PostgreSQL 16 e backend real descartáveis, além dos testes com fixtures. A CI da base `187f565` passou na [execução 41900348828](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41900348828). A seção de fechamento abaixo registra a nova entrega.
 
 O fluxo implementado é: categorias/unidades → produtos → SKUs → vínculos com lojas → preços por produto/loja. A interface é em português, com branding Vila Verde, sidebar, breadcrumbs e navegação móvel. A raiz redireciona para `/produtos`.
 
@@ -19,8 +19,8 @@ O fluxo implementado é: categorias/unidades → produtos → SKUs → vínculos
 | Validação                | Enums exatos, DTO completo em PUT, moeda brasileira não negativa, datas ISO com `Z`, fim igual ou posterior ao início                 |
 | Estados e acessibilidade | Loading, vazio, erro/retry, registro ausente, confirmação, preservação de formulário, envio bloqueado durante gravação, labels e foco |
 | Testes e CI              | Vitest/Testing Library, Playwright desktop/mobile e workflow de lint, tipos, testes e build                                           |
-| Lockfile                 | Ainda não versionado: arquivo local preexistente contém URLs de registro privado                                                      |
-| Smoke real               | Script local pronto; execução contra backend descartável pendente                                                                     |
+| Lockfile                 | Lock público versionado; instalação limpa com `npm ci` validada |
+| Smoke real               | Smoke e Playwright real desktop/mobile passaram com PostgreSQL 16 descartável |
 
 Listas usam dados reais em produção; fixtures estão nos testes. Não há cascata de exclusão na interface. Os preços mostram todos os registros e respectivas validades, sem escolher um preço vigente nem estabelecer precedência para sobreposições. Vínculos/preços retornados pela API são filtrados explicitamente pelos IDs selecionados. SKUs são consultados por `idProduto`.
 
@@ -54,11 +54,13 @@ Os componentes em [components/ui](../components/ui) concentram utilitários reut
 | `npm run build`     | Passou, incluindo compilação, tipos e geração de páginas                                                                                                                                   |
 | Comparação visual   | 55 capturas em 1440, 960 e 390 px: zero diferenças de geometria; 49 capturas idênticas em pixels; diferenças residuais até 96 pixels nos outros 6 casos                                    |
 | Limites responsivos | Conferidos em 390, 720, 721, 1050, 1051 e 1600 px                                                                                                                                          |
-| Backend real        | Não executado com sucesso; permanece pendente                                                                                                                                              |
+| Backend real        | Concluído no fechamento abaixo; smoke e dois projetos Chromium passaram                                                                                                                                              |
 
 As capturas incluem listagens, forms, diálogos de categoria/loja/SKU/preço/exclusão, tabs, hover, validação, drawer móvel, vazio, erro e ausência de pré-requisitos. Os artefatos são temporários em `/tmp/vila-tailwind-visual/`; não foram adicionados ao repositório nem são fixtures de regressão permanentes. Pequenas diferenças de rasterização/texto não foram apresentadas como igualdade absoluta de pixels.
 
 O build usou uma cópia isolada em `/tmp/vila-tailwind-build.htFiAF` com as mesmas fontes e dependências instaladas, para não interromper o servidor de desenvolvimento existente na porta 3000. A última edição posterior ao build foi em testes; o código da aplicação é o mesmo validado pelo build. Os avisos locais sobre a configuração futura do Vite e as variáveis de cor do runner não impediram os testes.
+
+As evidências da tabela acima descrevem o refactor original; a instalação limpa e a integração real posteriores estão registradas no fechamento abaixo.
 
 ### Problemas dos testes corrigidos
 
@@ -66,13 +68,36 @@ A instalação completa das dependências tornou visíveis três erros de TypeSc
 
 A execução dos testes de browser revelou seletores ambíguos já presentes na suíte: `SKU` também correspondia ao diálogo/tabpanel, `Vincular loja` correspondia a `Desvincular Loja Centro`, e o primeiro botão de retry era o de categorias. Os seletores foram restringidos ao elemento/recurso correto. O fluxo completo também aguardava a gravação, mas recarregava antes de confirmar a navegação; agora espera a URL de detalhe antes do reload e tem timeout próprio de 60 segundos. Não foi necessário mudar o comportamento da aplicação para contornar esses problemas.
 
-A [CI anterior de `1a4f0d2`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41849929867) falhou nos três erros de tipos do teste de catálogo. Essas causas estão corrigidas aqui; conferir a nova execução após o push antes de declarar CI verde.
+A [CI anterior de `1a4f0d2`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41849929867) falhou nos três erros de tipos do teste de catálogo. Essas causas foram corrigidas em `187f565`, cuja CI passou na [execução 41900348828](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41900348828).
 
-## Pendências para o próximo planejamento
+## Fechamento da validação completa
 
-1. **Concluir o smoke real.** Subir o backend do commit indicado com PostgreSQL descartável, configurar o frontend para a origem local e executar `npm run test:live`. Depois, percorrer o fluxo pelo navegador e conferir persistência após reload. A tentativa inicial de build do backend falhou em modo offline pela ausência do parent Spring Boot 4.1.1; o smoke não chegou a rodar. As antigas limitações de rede, porta e escrita Git não são mais o bloqueio atual. Não usar o Render compartilhado para mutações.
-2. **Versionar um lockfile portável.** O `package-lock.json` local já existia antes deste refactor e foi preservado sem alteração. Ele corresponde às dependências do manifesto, mas contém 235 resoluções no registro privado `nexus3.betha.com.br` e várias entradas sem metadados completos de resolução/integridade. Não foi incluído neste commit. Preparar um lock apropriado ao repositório, validar `npm ci` em checkout limpo e então substituir `npm install` por `npm ci` na CI. Não considerar a reprodutibilidade encerrada somente porque o arquivo existe localmente.
-3. **Conferir a CI do commit enviado.** Os checks locais passaram, mas o workflow remoto ainda precisa confirmar o resultado com uma instalação própria. O workflow atual usa `npm install` e instala Chromium antes do Playwright.
+Frontend: `67dadeee33174661481724fd60fb70c49ee09698` (base `187f565`, branch `feat/catalog`). Backend: `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`, sem alterações. O checkout de backend existente e seu `application.properties` modificado foram preservados.
+
+- Lock gerado em diretório temporário sem `node_modules`, exclusivamente pelo registro `https://registry.npmjs.org`. As 592 dependências resolvidas separadamente têm URL pública e `integrity`; seis entradas opcionais `inBundle` recebem integridade pelo pacote que as contém. O lock antigo foi preservado em `/tmp/catalog-lock.zqH8QI/original-package-lock.json` nesta máquina.
+- `npm ci` passou sem configuração de registro privado em uma cópia limpa. Lint, tipos e 39 testes unitários passaram nessa instalação. Os 18 testes Playwright com fixtures passaram também nessa cópia, com configuração temporária na porta 3200 e servidor próprio para preservar o desenvolvimento na porta 3000. O build de produção, smoke real e dois projetos Chromium reais passaram.
+- A suíte real cria categoria, unidade, loja, produto, SKU, vínculo e preço pelo UI; verifica edição, `1.234,56` e `14,50`, datas locais, reload de produto e relacionamentos, duplicidades e bloqueios de exclusão por referência. As gravações de vínculo e preço continuam após falhas independentes. Não houve defeito de integração no código da aplicação que exigisse correção.
+- Todos os registros criados são removidos por API em ordem de dependência; falhas de limpeza reprovam o teste. Ao final o orquestrador encerra os processos próprios e remove o PostgreSQL, sem volumes persistentes.
+- Verificações negativas passaram: o smoke recusa ausência de `CATALOG_DISPOSABLE=1` antes de acessar a API; uma porta 3100 ocupada faz a integração falhar preservando o servidor existente. SIGTERM durante a inicialização também retornou falha e removeu o container, deixando as portas 8081/3100 livres.
+- CI: [execução 41906754976](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41906754976) concluída com sucesso para `67dadeee33174661481724fd60fb70c49ee09698`, com os jobs `validate` e `integration` verdes. O workflow mantém os checks anteriores e adiciona um job de integração com Node 24, Java 21, Docker e Chromium. Em falhas publica logs com senha temporária removida, relatório e traces.
+
+Comandos exatos:
+
+```bash
+nvm use
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npx playwright install --with-deps chromium
+npm run test:e2e
+npm run build
+npm run test:integration
+```
+
+`test:integration` já inclui um build isolado. Para o smoke de baixo nível, somente depois de confirmar que **o banco upstream** é descartável: `CATALOG_DISPOSABLE=1 SMOKE_BASE_URL=http://127.0.0.1:3100 npm run test:live`. Uma URL loopback do frontend não garante isso.
+
+Limitações: dados sobrevivem a reload do navegador, mas não precisam sobreviver ao restart do backend (`ddl-auto=create`). O fluxo exige internet para obter o commit fixado, imagem PostgreSQL e dependências Maven. SIGKILL e queda da máquina impedem limpeza automática; remova eventual container `vila-integration-*` restante. O lock conserva as declarações de dependências existentes; a auditoria npm da instalação reportou 11 avisos (8 moderados, 2 altos, 1 crítico), sem atualização de versões neste escopo. Autenticação, deploy e merge permanecem fora da entrega.
 
 ## Mapa para retomar
 
@@ -83,6 +108,8 @@ A [CI anterior de `1a4f0d2`](https://github.com/BrunoCGhisi/erp-produtos-naturai
 - [record-form.tsx](../components/record-form.tsx): forms compartilhados com React Hook Form e validação Zod.
 - [product-detail.tsx](../components/product-detail.tsx): abas e relacionamentos; preservar filtros explícitos por IDs.
 - [e2e/catalog.spec.ts](../e2e/catalog.spec.ts): fluxo completo e exceções com API interceptada.
-- [smoke-live.mjs](../scripts/smoke-live.mjs): mutações e limpeza em ordem inversa, limitado à origem loopback.
+- [smoke-live.mjs](../scripts/smoke-live.mjs): smoke de baixo nível com opt-in explícito e origem loopback.
+- [integration.mjs](../scripts/integration.mjs): backend fixado, PostgreSQL e frontend descartáveis, prontidão e limpeza.
+- [playwright.live.config.ts](../playwright.live.config.ts) e [e2e-live/catalog.spec.ts](../e2e-live/catalog.spec.ts): Chromium real desktop/mobile, sem interceptação.
 
 Não existem alterações de backend, deploy público ou nova autenticação nesta entrega. A continuidade deve partir de `feat/catalog`, preservando o commit de integração do SDK e as separações produto/SKU/vínculo/preço.
