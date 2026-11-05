@@ -1,4 +1,4 @@
-name: Catálogo frontend
+name: Catálogo e estoque frontend
 on:
   push:
   pull_request:

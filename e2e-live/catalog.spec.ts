@@ -50,7 +50,7 @@ test("catálogo real: fluxo completo, erros independentes e persistência", asyn
       CNPJ: `${Date.now()}${Math.floor(Math.random() * 10)}`,
       Estado: "SC", Cidade: "Criciúma", Bairro: "Centro", Número: "10",
       Complemento: "Integração descartável",
-    })) await page.getByLabel(label, { exact: false }).fill(value);
+    })) await page.getByRole("dialog").getByLabel(label, { exact: false }).fill(value);
     await save(page);
     await page.goto("/produtos/novo");
     await page.getByLabel("Nome do produto").fill(name);

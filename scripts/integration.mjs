@@ -6,6 +6,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { inventorySeed } from "./inventory-seed.mjs";
 
 const root = process.cwd();
 const commit = "e0f312e611d56ab73a4a8e3d5832f8b8874ff362";
@@ -19,6 +20,9 @@ const children = new Set();
 const streams = [];
 let stopping = false;
 let databaseCreated = false;
+let inventoryFixture;
+let backendProcess;
+let inventorySqlStep = 0;
 const env = { ...process.env, BACKEND_API_URL: "http://127.0.0.1:8081" };
 await rm(logs, { recursive: true, force: true });
 await mkdir(logs, { recursive: true });
@@ -71,7 +75,7 @@ async function stop(child) {
 }
 for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => {
   stopping = true;
-  for (const child of children) if (child.pid) { try { process.kill(-child.pid, "SIGTERM"); } catch {} }
+  for (const child of children) if (child.pid && child !== backendProcess) { try { process.kill(-child.pid, "SIGTERM"); } catch {} }
 });
 try {
   await Promise.all([freePort(8081), freePort(3100)]);
@@ -101,8 +105,11 @@ try {
     SPRING_DATASOURCE_URL: `jdbc:postgresql://127.0.0.1:${port}/catalog`,
     SPRING_DATASOURCE_USERNAME: "catalog", SPRING_DATASOURCE_PASSWORD: password,
   }, "backend.log");
+  backendProcess = api;
   console.log(`Backend fixado em ${commit}; aguardando API real…`);
   await ready("http://127.0.0.1:8081/api/categorias", api, 600000);
+  inventoryFixture = inventorySeed({ base: "http://127.0.0.1:8081", sql: (statement) => run("docker", ["exec", container, "psql", "-U", "catalog", "-d", "catalog", "-v", "ON_ERROR_STOP=1", "-c", statement], root, {}, `inventory-sql-${++inventorySqlStep}.log`) });
+  const inventory = await inventoryFixture.seed();
   await cp(root, frontend, { recursive: true, filter: (source) =>
     ![".git", ".next", "node_modules", "integration-artifacts", "playwright-report", "playwright-live-report", "test-results"].includes(path.basename(source)) && !path.basename(source).startsWith(".env") });
   // Reuse only installed dependencies, never a running server or build directory.
@@ -110,7 +117,7 @@ try {
   await run("npm", ["run", "build"], frontend, {}, "frontend-build.log");
   const web = start("npm", ["run", "start", "--", "--hostname", "127.0.0.1", "--port", "3100"], frontend, {}, "frontend.log");
   await ready("http://127.0.0.1:3100/api/categorias", web, 60000);
-  const testEnv = { SMOKE_BASE_URL: "http://127.0.0.1:3100", CATALOG_DISPOSABLE: "1" };
+  const testEnv = { SMOKE_BASE_URL: "http://127.0.0.1:3100", CATALOG_DISPOSABLE: "1", INVENTORY_FIXTURE: JSON.stringify(inventory) };
   await run("npm", ["run", "test:live"], root, testEnv);
   await run("npx", ["playwright", "test", "--config=playwright.live.config.ts"], root, testEnv);
   console.log("Integração real concluída: smoke e Chromium desktop/mobile.");
@@ -118,6 +125,10 @@ try {
   console.error(error.message);
   process.exitCode = 1;
 } finally {
+  if (inventoryFixture) {
+    try { await inventoryFixture.cleanup(); }
+    catch (error) { process.exitCode = 1; console.error(`Falha na limpeza de estoque: ${error.message}`); }
+  }
   for (const child of children) {
     try { await stop(child); }
     catch (error) { process.exitCode = 1; console.error(`Falha ao encerrar processo: ${error.message}`); }

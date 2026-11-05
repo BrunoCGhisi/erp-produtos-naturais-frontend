@@ -1,4 +1,6 @@
 const resources = new Set([
+  "estoques",
+  "movimentacoes-estoque",
   "produtos",
   "categorias",
   "unidades-medida",
@@ -10,12 +12,14 @@ const resources = new Set([
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function forwardCatalog(request: Request, path: string[]) {
   const [resource, id] = path;
-  if (!resources.has(resource) || path.length > 2 || (id && !uuid.test(id)))
+  const inventory = resource === "estoques" || resource === "movimentacoes-estoque";
+  const balance = resource === "estoques" && id === "saldo";
+  if (!resources.has(resource) || path.length > 2 || (id && !balance && !uuid.test(id)))
     return Response.json(
       { message: "Recurso não encontrado." },
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
-  const allowed = id
+  const allowed = inventory ? ["GET"] : id
     ? resource === "produtos-loja"
       ? ["GET", "DELETE"]
       : ["GET", "PUT", "DELETE"]
@@ -28,6 +32,11 @@ export async function forwardCatalog(request: Request, path: string[]) {
         headers: { Allow: allowed.join(", "), "Cache-Control": "no-store" },
       },
     );
+  if (balance) {
+    const params = new URL(request.url).searchParams;
+    if (!["idProduto", "idLoja"].every((key) => params.getAll(key).length === 1 && uuid.test(params.get(key) || "")))
+      return Response.json({ message: "Informe idProduto e idLoja válidos." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
   try {
     const base = process.env.BACKEND_API_URL || "http://localhost:8080";
     const url = new URL(`/api/${path.join("/")}`, base);

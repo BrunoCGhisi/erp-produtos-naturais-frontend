@@ -27,6 +27,10 @@ const links = [
   { href: "/unidades-medida", label: "Unidades de medida", icon: Ruler },
   { href: "/lojas", label: "Lojas", icon: Store },
 ];
+const inventoryLinks = [
+  { href: "/estoque", label: "Saldos", icon: Package },
+  { href: "/estoque/movimentacoes", label: "Movimentações", icon: Store },
+];
 function Brand() {
   return (
     <Link
@@ -74,13 +78,20 @@ function Navigation({
           {label}
         </Link>
       ))}
+      <p className="mt-6 px-3.5 pb-2 text-[10px] font-semibold tracking-[1.8px] text-muted">ESTOQUE</p>
+      {inventoryLinks.map(({ href, label, icon: Icon }) => (
+        <Link key={href} href={href} onClick={onNavigate} aria-current={path === href ? "page" : undefined}
+          className="my-[5px] flex items-center gap-3 rounded-[7px] px-3.5 py-3 text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:text-primary">
+          <Icon size={19} />{label}
+        </Link>
+      ))}
     </nav>
   );
 }
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname(),
     [open, setOpen] = useState(false);
-  const current = links.find((x) => path.startsWith(x.href));
+  const current = [...inventoryLinks].reverse().find((x) => path === x.href) || links.find((x) => path.startsWith(x.href));
   return (
     <div className="flex min-h-screen">
       <a
@@ -123,7 +134,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Dialog>
           </div>
           <div className="flex items-center gap-3 text-[12px] text-[#7b877e] mobile:gap-[7px] mobile:text-[11px]">
-            <Link href="/produtos">Catálogo</Link>
+            <Link href={path.startsWith("/estoque") ? "/estoque" : "/produtos"}>{path.startsWith("/estoque") ? "Estoque" : "Catálogo"}</Link>
             <ChevronRight size={14} />
             <span className="text-[#3b5142]">
               {current?.label || "Página"}

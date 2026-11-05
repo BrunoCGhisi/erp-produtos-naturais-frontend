@@ -24,7 +24,7 @@ O fluxo implementado é: categorias/unidades → produtos → SKUs → vínculos
 
 Listas usam dados reais em produção; fixtures estão nos testes. Não há cascata de exclusão na interface. Os preços mostram todos os registros e respectivas validades, sem escolher um preço vigente nem estabelecer precedência para sobreposições. Vínculos/preços retornados pela API são filtrados explicitamente pelos IDs selecionados. SKUs são consultados por `idProduto`.
 
-Autenticação, fornecedores, clientes, vendas, compras, estoque, dashboards, usuários e hospedagem permanecem fora do MVP de demonstração interna.
+Autenticação, fornecedores, clientes, vendas, compras, ajustes/transferências de estoque, dashboards, usuários e hospedagem permanecem fora do MVP de demonstração interna.
 
 ## Origem e particularidades da integração
 
@@ -113,3 +113,26 @@ Limitações: dados sobrevivem a reload do navegador, mas não precisam sobreviv
 - [playwright.live.config.ts](../playwright.live.config.ts) e [e2e-live/catalog.spec.ts](../e2e-live/catalog.spec.ts): Chromium real desktop/mobile, sem interceptação.
 
 Não existem alterações de backend, deploy público ou nova autenticação nesta entrega. A continuidade deve partir de `feat/catalog`, preservando o commit de integração do SDK e as separações produto/SKU/vínculo/preço.
+
+
+## Etapa 2 — visibilidade de estoque
+
+Implementadas `/estoque` e `/estoque/movimentacoes`, com hooks/tipos gerados intactos, filtros locais e enviados à API, URL restaurável, ordenação, paginação de 20 linhas, consulta exata independente, atualização manual, estados de carregamento/vazio/erro e data da última consulta bem-sucedida. O catálogo conecta-se aos saldos pelo produto; sidebar e menu móvel incluem Estoque, com breadcrumbs.
+
+Quantidades usam três casas decimais e separadores brasileiros; movimentos preservam o valor retornado. Datas com offset são convertidas para `America/Sao_Paulo`; filtros comparam dias nesse fuso e incluem ambas as extremidades. Não há combinações artificiais, totais entre unidades ou cálculo de saldo histórico. O diálogo é somente leitura e omite referências ausentes. Consultas de lookup usam as mesmas chaves geradas do catálogo; na ausência de nomes, registros continuam visíveis pelos IDs.
+
+`lib/proxy.ts` permite somente GET nos dois recursos de estoque, por coleção/UUID, e trata `estoques/saldo` antes da validação de UUID do caminho, exigindo os dois parâmetros válidos e únicos. Permissões do catálogo permanecem iguais.
+
+`e2e/inventory.spec.ts`, `tests/inventory*.test.*` e os novos casos de proxy cobrem precisão, datas, filtros individuais, persistência na URL, fallback, ausência versus zero, refresh, erros independentes e navegação. `scripts/inventory-seed.mjs` é importado somente pelo runner descartável, sem SQL em rotas de aplicação. Insere dados conhecidos no container próprio após criar catálogo por API e remove estoque antes de limpar o catálogo, inclusive em falhas. `e2e-live/inventory.spec.ts` consome IDs da fixture via variável de ambiente, sem interceptar chamadas. A CI existente descobre as novas suítes em ambos os projetos de cada configuração e reprova em qualquer falha.
+
+Os parâmetros de filtros usam `history.replaceState` integrado ao Next para manter a UI/URL sincronizadas sem navegação de servidor; cada alteração parte da URL atual, evitando perder alterações rápidas. Seletores têm rótulos explícitos. O teste real antigo de loja passou a procurar campos dentro do diálogo para evitar colisão com botões de registros já existentes.
+
+Comandos de validação desta etapa: `npm run lint`, `npm run typecheck`, `npm test`, `npx playwright test`, `npm run test:integration` (inclui build, smoke e Playwright real desktop/mobile). Evidências locais em 04/11/2026 (Node 24):
+
+- `npm run lint`, `npm run typecheck` e `npm test`: passaram; 57 testes em 8 arquivos.
+- `npx playwright test`: 28 cenários passaram, em desktop/mobile. Após ampliar as asserções de quantidade, ordenação, parâmetros enviados e refresh com valores alterados, `npx playwright test e2e/inventory.spec.ts` passou novamente nos 10 cenários de estoque.
+- `npm run test:integration`: passou com o backend fixado e PostgreSQL 16 próprio. Incluiu build de produção, smoke e 4 cenários reais (catálogo + estoque em `live-desktop` e `live-mobile`), sem interceptações.
+- Limpeza confirmada: 5 movimentos e 3 saldos removidos em transação antes dos pré-requisitos do catálogo; container removido; runner terminou com código 0. Logs em `integration-artifacts/` (ignorados pelo Git).
+- `git diff --check`: passou. SDK e dependências não foram alterados. O workflow continua exigindo as duas suítes de navegador e os checks anteriores; esta etapa não foi enviada ao remoto nem executada na CI nesta sessão.
+
+A execução inicial revelou seletores imprecisos e perda de filtros em navegações rápidas; foram corrigidos antes das execuções verdes acima. O runner foi ajustado para conservar o backend durante o recebimento de sinal até finalizar a limpeza das fixtures. O build da execução verde contém o código final da aplicação; as edições posteriores ampliaram testes e documentação.

@@ -1,12 +1,12 @@
-# Vila Verde · Catálogo
+# Vila Verde · Catálogo e estoque
 
-Frontend administrativo em português para o catálogo de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
+Frontend administrativo em português para o catálogo e a consulta de estoque de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
 
 ## Estado da implementação
 
-Catálogo implementado na branch `feat/catalog`, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md).
+Catálogo e consulta de estoque implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md).
 
-Verificações locais concluídas em 04/11/2026, com Node 24:
+Validação anterior do catálogo em 04/11/2026, com Node 24 (a evidência da etapa 2 está no handoff):
 
 - ESLint e TypeScript passaram.
 - Vitest: 39 testes passaram, incluindo Testing Library e atualização de queries.
@@ -15,6 +15,8 @@ Verificações locais concluídas em 04/11/2026, com Node 24:
 - Comparação visual: 55 capturas antes/depois do refactor, sem diferenças de geometria; 49 idênticas em pixels. Os seis casos restantes tiveram diferenças pequenas de rasterização/texto (até 96 pixels por captura). Os limites responsivos também foram conferidos em 390, 720, 721, 1050, 1051 e 1600 px.
 
 Instalação limpa pelo registro público, smoke da API e Playwright real desktop/mobile passaram contra o backend fixado abaixo e PostgreSQL 16 descartável. A [CI de `67dadee`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/runs/41906754976) passou nos jobs `validate` e `integration`. Consulte o handoff para os commits, comandos e limitações.
+
+Validação local da etapa 2 (04/11/2026): lint, tipos, 57 testes unitários/de componentes, 28 cenários de navegador e integração descartável completos passaram. A integração inclui build, smoke e 4 cenários reais de catálogo/estoque em desktop e mobile. Os 10 cenários de estoque também passaram após ampliar as asserções. SDK e dependências permanecem inalterados; a evidência atual é local, sem nova execução de CI nesta sessão.
 
 ## Executar
 
@@ -30,7 +32,7 @@ Abra http://localhost:3000. A raiz redireciona para `/produtos`. O lockfile vers
 
 `BACKEND_API_URL=http://localhost:8080` é uma variável **somente do servidor** e deve conter a origem do backend. Reinicie o Next.js após alterá-la. Não use `NEXT_PUBLIC_` nem aponte para Render ao testar mutações.
 
-O navegador chama o mesmo domínio em `/api`. O Route Handler encaminha apenas `produtos`, `categorias`, `unidades-medida`, `lojas`, `produtos-sku`, `produtos-loja` e `produtos-precos-loja`. Permite GET/POST de coleções e GET/PUT/DELETE por UUID; vínculos não aceitam PUT. Mantém parâmetros, códigos HTTP, JSON de erro e respostas vazias 204; desativa cache e limita a espera pelo backend a 15 segundos. Não encaminha credenciais ou cookies.
+O navegador chama o mesmo domínio em `/api`. O Route Handler encaminha os recursos de catálogo `produtos`, `categorias`, `unidades-medida`, `lojas`, `produtos-sku`, `produtos-loja` e `produtos-precos-loja`. No catálogo, permite GET/POST de coleções e GET/PUT/DELETE por UUID; vínculos não aceitam PUT. Estoque permite somente GET em `estoques`, `estoques/{uuid}`, `estoques/saldo`, `movimentacoes-estoque` e `movimentacoes-estoque/{uuid}`. O saldo exige `idProduto` e `idLoja` UUIDs válidos; escritas de estoque retornam 405. Mantém parâmetros, códigos HTTP, JSON de erro e respostas vazias 204; desativa cache e limita a espera pelo backend a 15 segundos. Não encaminha credenciais ou cookies.
 
 ## Backend e SDK
 
@@ -74,7 +76,19 @@ As abas fazem operações independentes: uma falha não apaga o que já foi salv
 
 Busca, ordenação e paginação (20 registros) são locais porque a API retorna arrays. Os controles ficam nos parâmetros da URL; produtos também têm filtros de categoria e status. Cadastros de apoio usam modais, e produtos usam páginas completas. Exclusões exigem confirmação e nunca fazem cascata. Erros de integridade permanecem visíveis; formulários mantêm o conteúdo após falhas e bloqueiam novo envio enquanto salvam.
 
-Sem autenticação nesta primeira versão, destinada a desenvolvimento/demonstração interna. Fornecedores, clientes, vendas, compras, estoque, dashboards, usuários e hospedagem estão fora do escopo.
+Sem autenticação nesta primeira versão, destinada a desenvolvimento/demonstração interna. Fornecedores, clientes, vendas, compras, ajustes/transferências de estoque, dashboards, usuários e hospedagem estão fora do escopo.
+
+## Consulta de estoque (etapa 2)
+
+- `/estoque`: saldos existentes por produto/loja, unidade, quantidade e última atualização; busca por nome, seletores de produto/loja, filtro de quantidade, ordenação e páginas locais de 20 registros.
+- Ao selecionar produto e loja, o painel consulta o saldo exato separadamente. Zero retornado pelo endpoint é mostrado mesmo quando a listagem não tem registro, com a indicação “Sem registro de estoque”. Erros nunca são convertidos em saldo zero.
+- `/estoque/movimentacoes`: tipo, quantidade original e observação; filtros de produto/loja/tipo e datas inclusivas em `America/Sao_Paulo`, ordenação e paginação. O diálogo mostra observação completa e referências presentes, somente para consulta.
+- Filtros, ordenação e página ficam na URL e sobrevivem ao reload. Alterar filtros reinicia a página. “Atualizar” recarrega as consultas de estoque atuais; sucessos independentes e dados anteriores continuam visíveis em falhas.
+- Produtos levam ao catálogo; “Consultar estoque” nos detalhes retorna aos saldos filtrados. A navegação desktop/mobile oferece Saldos e Movimentações.
+
+A API recebe filtros de produto/loja; a interface também os aplica localmente. Não cria combinações inexistentes nem soma unidades incompatíveis. Quantidades usam até três casas decimais brasileiras. Consultas de catálogo resolvem nomes/unidades e mantêm compatibilidade com a invalidação existente; IDs servem de fallback. Não há movimentações de escrita, saldo por SKU ou saldo histórico calculado.
+
+O runner de integração cria os pré-requisitos por API após a prontidão do backend e insere saldos/movimentações conhecidos exclusivamente no PostgreSQL que ele próprio iniciou (`scripts/inventory-seed.mjs`). Inclui zero, negativo, frações, dois produtos/lojas e limites de datas. A limpeza remove primeiro movimentos e saldos por SQL, depois o catálogo pela API. Nenhuma rota da aplicação executa SQL.
 
 ## Verificação
 

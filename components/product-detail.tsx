@@ -345,12 +345,17 @@ export function ProductDetail({ id }: { id: string }) {
         title={product.nome || "Produto"}
         description="Gerencie os identificadores, as lojas e os preços deste produto."
         action={
-          <Button asChild variant="outline">
-            <Link href={`/produtos/${id}/editar`}>
-              <Pencil size={16} />
-              Editar produto
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/estoque?idProduto=${id}`}>Consultar estoque</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`/produtos/${id}/editar`}>
+                <Pencil size={16} />
+                Editar produto
+              </Link>
+            </Button>
+          </div>
         }
       />
       <Panel>
