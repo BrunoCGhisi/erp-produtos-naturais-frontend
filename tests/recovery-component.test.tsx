@@ -58,7 +58,13 @@ it("storage quota failure keeps editing available and reports unavailable recove
   const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
   fireEvent.change(screen.getByLabelText("Text"), { target: { value: "local" } });
   await screen.findByText(/Recuperação indisponível/);
-  expect(screen.getByLabelText("Text")).toBeEnabled(); write.mockRestore();
+  expect(screen.getByLabelText("Text")).toBeEnabled();
+  fireEvent.click(screen.getByRole("link", { name: "Voltar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Sair e manter recuperação" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByLabelText("Text")).toHaveValue("local");
+  expect(screen.getByText(/Recuperação indisponível/)).toBeVisible();
+  write.mockRestore();
 });
 
 it("storage read failure does not block editing", () => {

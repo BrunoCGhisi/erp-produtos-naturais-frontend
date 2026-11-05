@@ -39,19 +39,21 @@ export function useDocumentRecovery<T>({ context, initial, values, setValues, sc
   }
   function flush() {
     const s = state.current;
-    if (!s.initialized || s.committed || s.blocked) return;
+    if (s.committed) return true;
+    if (!s.initialized || s.blocked) return false;
     try {
-      if (checkExternal()) return;
+      if (checkExternal()) return false;
       if (!s.dirty) {
-        localStorage.removeItem(s.key); s.seen = null; setMessage(""); return;
+        localStorage.removeItem(s.key); s.seen = null; setMessage(""); return true;
       }
       const record: Recovery<T> = { version: 1, updatedAt: Date.now(), revision: crypto.randomUUID(), baseline: s.baseline, values: s.values };
       const raw = JSON.stringify(record);
       // Unchanged values do not extend the seven-day lifetime.
-      if (s.seen && JSON.stringify(read(s.seen)?.values) === JSON.stringify(s.values)) return;
+      if (s.seen && JSON.stringify(read(s.seen)?.values) === JSON.stringify(s.values)) return true;
       localStorage.setItem(s.key, raw); s.seen = raw;
       setMessage("Recuperação salva neste navegador");
-    } catch { fail(); }
+      return true;
+    } catch { fail(); return false; }
   }
   function clear(force = false) {
     const s = state.current;
@@ -129,8 +131,9 @@ export function useDocumentRecovery<T>({ context, initial, values, setValues, sc
   function leave(discard: boolean) {
     if (discard && !clear()) { setDestination(null); return; }
     if (!discard) {
-      flush();
+      const persisted = flush();
       if (state.current.blocked) { setDestination(null); setMessage("Resolva o conflito de recuperação antes de sair e manter as alterações."); return; }
+      if (!persisted) { setDestination(null); fail(); return; }
     }
     if (discard) { state.current.dirty = false; setValues(original); }
     if (destination) {
