@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ListarUnidadesMedidaStatus200 } from '../types/ListarUnidadesMedida'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { listarUnidadesMedida } from '../clients/listarUnidadesMedida'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const listarUnidadesMedidaQueryKey = () => [{ url: '/api/unidades-medida' }] as const
 

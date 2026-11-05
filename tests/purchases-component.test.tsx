@@ -7,6 +7,7 @@ import { recoveryKey, purchaseFingerprint } from "@/lib/recovery";
 import { draftValues } from "@/lib/purchases";
 import { PurchaseEditor, PurchaseRecord } from "@/components/purchases";
 const state = vi.hoisted(() => ({
+  receipts: false,
   recordError: false,
   recordMissing: false,
   push: vi.fn(),
@@ -23,6 +24,9 @@ vi.mock("@/generated/sdk/hooks/useBuscarCompraPorId", () => ({
     error: { status: 502 },
     refetch: vi.fn(),
   }),
+}));
+vi.mock("@/generated/sdk/hooks/useListarRecebimentosCompra", () => ({
+  useListarRecebimentosCompra: () => ({ data:state.receipts ? [{ id:"receipt" }] : [], isSuccess:true, isError:false }),
 }));
 const id = "11111111-1111-4111-8111-111111111111";
 const result = () => ({
@@ -82,6 +86,7 @@ function renderEditor() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  state.receipts = false;
   state.recordError = false;
   state.recordMissing = false;
 });
@@ -222,4 +227,12 @@ it("compra desaparecida mantém cópia local em consulta sem permitir aplicaçã
   expect(screen.getByText(/Referência offline/)).toBeVisible();
   expect(screen.queryByRole("button", { name: "Restaurar" })).toBeNull();
   expect(localStorage.getItem(key)).not.toBeNull();
+});
+
+it("bloqueia edição de compra referenciada por recebimentos", () => {
+  state.receipts = true;
+  renderEditor();
+  expect(screen.getByRole("button", { name:"Salvar rascunho" })).toBeDisabled();
+  expect(screen.getByRole("alert")).toHaveTextContent("possui recebimentos");
+  expect(state.update).not.toHaveBeenCalled();
 });

@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarAjusteEstoqueOptions, CriarAjusteEstoqueStatus200 } from '../types/CriarAjusteEstoque'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarAjusteEstoque } from '../clients/criarAjusteEstoque'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarAjusteEstoqueMutationKey = () => [{ url: '/api/ajustes-estoque' }] as const
 

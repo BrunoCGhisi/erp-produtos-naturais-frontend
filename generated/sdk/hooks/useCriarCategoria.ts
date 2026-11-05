@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarCategoriaOptions, CriarCategoriaStatus200 } from '../types/CriarCategoria'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarCategoria } from '../clients/criarCategoria'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarCategoriaMutationKey = () => [{ url: '/api/categorias' }] as const
 

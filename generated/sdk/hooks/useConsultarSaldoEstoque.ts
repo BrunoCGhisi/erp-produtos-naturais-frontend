@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ConsultarSaldoEstoqueOptions, ConsultarSaldoEstoqueStatus200 } from '../types/ConsultarSaldoEstoque'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { consultarSaldoEstoque } from '../clients/consultarSaldoEstoque'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const consultarSaldoEstoqueQueryKey = ({ query }: Omit<ConsultarSaldoEstoqueOptions, 'headers'>) => [{ url: '/api/estoques/saldo' }, ...(query ? [query] : [])] as const
 

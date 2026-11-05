@@ -12,7 +12,7 @@ export function useDocumentRecovery<T>({ context, initial, values, setValues, sc
 }) {
   const router = useRouter();
   const [original] = useState(initial);
-  const [originalBaseline] = useState(baseline);
+  const [originalBaseline, setOriginalBaseline] = useState(baseline);
   const [pending, setPending] = useState<Recovery<T> | null>(null);
   const [conflict, setConflict] = useState(false);
   const [ready, setReady] = useState(false);
@@ -155,7 +155,7 @@ export function useDocumentRecovery<T>({ context, initial, values, setValues, sc
       <h2 className="font-semibold">{conflict ? "Recuperação alterada em outra aba" : "Recuperação disponível"}</h2>
       {pending && <p>Última alteração: {new Date(pending.updatedAt).toLocaleString("pt-BR")}</p>}
       {pending && (!applicable || pending.baseline !== baseline) ? <>
-        <p role="alert">A compra salva mudou, não está editável ou não está disponível. Esta cópia serve apenas para consulta manual.</p>
+        <p role="alert">O documento salvo mudou, não está editável ou não está disponível. Esta cópia serve apenas para consulta manual.</p>
         <pre className="overflow-auto whitespace-pre-wrap">{JSON.stringify(pending.values, null, 2)}</pre>
       </> : <Button type="button" onClick={() => decide(true)}>{conflict ? "Carregar cópia da outra aba" : "Restaurar"}</Button>}
       <Button type="button" variant="outline" onClick={() => decide(false)}>{conflict ? "Substituir pela edição desta aba" : "Descartar"}</Button>
@@ -175,7 +175,13 @@ export function useDocumentRecovery<T>({ context, initial, values, setValues, sc
       </DialogContent>
     </Dialog>
   </>;
-  return { dirty, blocked, ui, commit, flush };
+  function persist(values: T) {
+    state.current.values = values;
+    state.current.dirty = true;
+    return flush();
+  }
+  function rebase(value: string) { state.current.baseline = value; setOriginalBaseline(value); }
+  return { dirty, blocked, ui, commit, flush, persist, rebase };
 }
 
 export function MissingSelection({ value, rows }: { value: string; rows?: { id?: string }[] }) {

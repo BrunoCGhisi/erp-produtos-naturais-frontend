@@ -1,10 +1,13 @@
 "use client";
 import Link from "next/link";
+import { ReceiptList } from "./receipts";
+import { canReceive, outstanding } from "@/lib/receipts";
 import { useDocumentRecovery, MissingSelection, selectedExists } from "./document-recovery";
 import { purchaseDraftSchema, purchaseFingerprint, ambiguousSave } from "@/lib/recovery";
 import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useListarRecebimentosCompra } from "@/generated/sdk/hooks/useListarRecebimentosCompra";
 import { useListarCompras } from "@/generated/sdk/hooks/useListarCompras";
 import { useBuscarCompraPorId } from "@/generated/sdk/hooks/useBuscarCompraPorId";
 import { useListarFornecedores } from "@/generated/sdk/hooks/useListarFornecedores";
@@ -278,6 +281,7 @@ export function PurchaseRecord({
 }) {
   const query = useBuscarCompraPorId({ path: { id } }, { query: { refetchOnMount: edit ? "always" : true, staleTime: edit ? 0 : 30000 } });
   const lookups = useLookups();
+  const receipts = useListarRecebimentosCompra({ query: { idCompra:id } });
   if (query.isPending || (edit && query.isFetchedAfterMount === false && !query.isError)) return <Loading />;
   if (query.isError && !query.data)
     return <><ErrorNotice error={query.error} retry={() => void query.refetch()} />{edit && <UnavailablePurchaseRecovery id={id} />}</>;
@@ -300,7 +304,7 @@ export function PurchaseRecord({
         title="Detalhes da compra"
         description={inventoryHint}
         action={
-          row.status === "RASCUNHO" && (
+          row.status === "RASCUNHO" && receipts.isSuccess && !receipts.data?.length && (
             <Button asChild>
               <Link href={`/compras/${id}/editar`}>Editar rascunho</Link>
             </Button>
@@ -341,6 +345,7 @@ export function PurchaseRecord({
               "DESCONTO",
               "TOTAL SALVO",
               "RECEBIDA",
+              "PENDENTE",
             ].map((t) => (
               <TableHead key={t}>{t}</TableHead>
             ))}
@@ -360,10 +365,14 @@ export function PurchaseRecord({
               <TableCell>{currency(i.desconto)}</TableCell>
               <TableCell>{currency(i.totalItem)}</TableCell>
               <TableCell>{quantity(i.quantidadeRecebida)}</TableCell>
+              <TableCell>{quantity(outstanding(i))}</TableCell>
             </TableRow>
           ))}
         </tbody>
       </Table>
+      {canReceive(row) && <Button asChild><Link href={`/compras/${id}/recebimentos/novo`}>Novo recebimento</Link></Button>}
+      {!!receipts.data?.length && <p className="my-3">A compra possui recebimentos. Para editar um rascunho de compra, exclua todos os recebimentos em rascunho. Recebimentos confirmados mantêm a compra bloqueada.</p>}
+      <ReceiptList purchaseId={id} />
       <Link href="/compras">Voltar aos pedidos</Link>
     </>
   );
@@ -377,6 +386,8 @@ export function PurchaseEditor({ initial, verificationError = false }: { initial
   const lookups = useLookups(true),
     client = useQueryClient(),
     router = useRouter();
+  const receiptReferences = useListarRecebimentosCompra({ query: { idCompra:initial?.id } }, { query: { enabled:!!initial?.id, refetchOnMount:"always", staleTime:0 } });
+  const referenced = !!initial?.id && !!receiptReferences.data?.length;
   const [draft, setDraft] = useState(() => draftValues(initial));
   const [originalFingerprint] = useState(() => initial ? purchaseFingerprint(initial) : "");
   const recovery = useDocumentRecovery({ context: initial?.id ? `purchase:${initial.id}` : "purchase:new", initial: draftValues(initial), values: draft, setValues: setDraft, schema: purchaseDraftSchema, baseline: initial ? purchaseFingerprint(initial) : "", applicable: !verificationError && (!initial || initial.status === "RASCUNHO") });
@@ -389,7 +400,7 @@ export function PurchaseEditor({ initial, verificationError = false }: { initial
     [status, setStatus] = useState(initial?.status);
   const savedStatus = initial?.status !== "RASCUNHO" ? initial?.status : status;
   const changedBaseline = !!initial && purchaseFingerprint(initial) !== originalFingerprint;
-  const locked = verificationError || (!!initial && (savedStatus !== "RASCUNHO" || changedBaseline));
+  const locked = referenced || verificationError || (!!initial && (savedStatus !== "RASCUNHO" || changedBaseline));
   const prerequisites = Object.values(lookups).every(
     (q) => q.isSuccess && !q.isFetching && !!q.data?.length,
   );
@@ -483,6 +494,7 @@ export function PurchaseEditor({ initial, verificationError = false }: { initial
           fornecedor, uma loja e um produto.
         </p>
       )}
+      {referenced && <p role="alert">A compra possui recebimentos e não pode ser editada. <Link href={`/compras/${initial?.id}`}>Ver histórico da compra</Link></p>}
       {changedBaseline && !savedLink && <p role="alert">A compra salva mudou desde a abertura. Reabra a edição para comparar a recuperação local com o registro atual.</p>}
       {!!initial && savedStatus !== "RASCUNHO" && (
         <p role="alert" className="mb-4">

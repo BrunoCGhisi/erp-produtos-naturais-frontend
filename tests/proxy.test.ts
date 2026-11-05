@@ -252,3 +252,17 @@ it.each([
     (await forwardCatalog(new Request("http://localhost/api/"), path)).status,
   ).toBe(404);
 });
+it("recebimentos: encaminha chave somente na criação e exige versão na exclusão", async () => {
+  const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ id:inventoryId }))); vi.stubGlobal("fetch",fetch);
+  const create = await forwardCatalog(new Request("http://localhost/api/recebimentos-compras", { method:"POST",headers:{ "Idempotency-Key":inventoryId },body:"{}" }),["recebimentos-compras"]);
+  expect(create.status).toBe(200); expect(fetch.mock.calls[0][1].headers["Idempotency-Key"]).toBe(inventoryId);
+  expect((await forwardCatalog(new Request("http://localhost/api/recebimentos-compras", { method:"POST",body:"{}" }),["recebimentos-compras"])).status).toBe(400);
+  expect((await forwardCatalog(new Request("http://localhost/api/recebimentos-compras/x", { method:"DELETE" }),["recebimentos-compras",inventoryId])).status).toBe(400);
+  expect((await forwardCatalog(new Request("http://localhost/api/recebimentos-compras/x?versao=2", { method:"DELETE" }),["recebimentos-compras",inventoryId])).status).toBe(200);
+});
+it("recebimentos: conclusão estreita, sem liberar ações em outras APIs",async () => {
+  vi.stubGlobal("fetch",vi.fn().mockResolvedValue(Response.json({})));
+  expect((await forwardCatalog(new Request("http://localhost/api/r",{method:"POST",body:"{}"}),["recebimentos-compras",inventoryId,"concluir"])).status).toBe(200);
+  expect((await forwardCatalog(new Request("http://localhost/api/r"),["recebimentos-compras",inventoryId,"concluir"])).status).toBe(405);
+  expect((await forwardCatalog(new Request("http://localhost/api/r",{method:"POST"}),["compras",inventoryId,"concluir"])).status).toBe(404);
+});

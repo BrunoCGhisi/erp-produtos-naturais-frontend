@@ -3,22 +3,22 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
-import type { ListarRecebimentosCompraStatus200 } from '../types/ListarRecebimentosCompra'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { ListarRecebimentosCompraOptions, ListarRecebimentosCompraStatus200, ListarRecebimentosCompraStatus400, ListarRecebimentosCompraStatus404, ListarRecebimentosCompraStatus409 } from '../types/ListarRecebimentosCompra'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { listarRecebimentosCompra } from '../clients/listarRecebimentosCompra'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
-export const listarRecebimentosCompraQueryKey = () => [{ url: '/api/recebimentos-compras' }] as const
+export const listarRecebimentosCompraQueryKey = ({ query }: Omit<ListarRecebimentosCompraOptions, 'headers'> = {}) => [{ url: '/api/recebimentos-compras' }, ...(query ? [query] : [])] as const
 
 type ListarRecebimentosCompraQueryKey = ReturnType<typeof listarRecebimentosCompraQueryKey>
 
-export function listarRecebimentosCompraQueryOptions(config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
-  const queryKey = listarRecebimentosCompraQueryKey()
-  return queryOptions<ListarRecebimentosCompraStatus200, ResponseErrorConfig<Error>, ListarRecebimentosCompraStatus200, typeof queryKey>({
+export function listarRecebimentosCompraQueryOptions({ query }: ListarRecebimentosCompraOptions = {}, config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
+  const queryKey = listarRecebimentosCompraQueryKey({ query })
+  return queryOptions<ListarRecebimentosCompraStatus200, ResponseErrorConfig<ListarRecebimentosCompraStatus400 | ListarRecebimentosCompraStatus404 | ListarRecebimentosCompraStatus409>, ListarRecebimentosCompraStatus200, typeof queryKey>({
    queryKey,
    queryFn: async ({ signal }) => {
-      return listarRecebimentosCompra({ ...config, signal: config.signal ?? signal, throwOnError: true }).unwrap()
+      return listarRecebimentosCompra({ ...config, query, signal: config.signal ?? signal, throwOnError: true }).unwrap()
    },
   })
 }
@@ -26,19 +26,20 @@ export function listarRecebimentosCompraQueryOptions(config: Partial<Omit<Reques
 /**
  * {@link /api/recebimentos-compras}
  */
-export function useListarRecebimentosCompra<TData = ListarRecebimentosCompraStatus200, TQueryData = ListarRecebimentosCompraStatus200, TQueryKey extends QueryKey = ListarRecebimentosCompraQueryKey>(options: {
-  query?: Partial<QueryObserverOptions<ListarRecebimentosCompraStatus200, ResponseErrorConfig<Error>, TData, TQueryData, TQueryKey>> & { client?: QueryClient },
+export function useListarRecebimentosCompra<TData = ListarRecebimentosCompraStatus200, TQueryData = ListarRecebimentosCompraStatus200, TQueryKey extends QueryKey = ListarRecebimentosCompraQueryKey>({ query }: { query?: ListarRecebimentosCompraOptions['query'] | (() => ListarRecebimentosCompraOptions['query']) } = {}, options: {
+  query?: Partial<QueryObserverOptions<ListarRecebimentosCompraStatus200, ResponseErrorConfig<ListarRecebimentosCompraStatus400 | ListarRecebimentosCompraStatus404 | ListarRecebimentosCompraStatus409>, TData, TQueryData, TQueryKey>> & { client?: QueryClient },
   client?: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>>
 } = {}) {
   const { query: queryConfig = {}, client: config = {} } = options ?? {}
   const { client: queryClient, ...resolvedOptions } = queryConfig
-  const queryKey = resolvedOptions?.queryKey ?? listarRecebimentosCompraQueryKey()
+  const resolvedParams = { query: typeof query === 'function' ? query() : query }
+  const queryKey = resolvedOptions?.queryKey ?? listarRecebimentosCompraQueryKey(resolvedParams)
 
   const queryResult = useQuery({
-   ...listarRecebimentosCompraQueryOptions(config),
+   ...listarRecebimentosCompraQueryOptions(resolvedParams, config),
    ...resolvedOptions,
    queryKey,
-  } as unknown as QueryObserverOptions, queryClient) as UseQueryResult<TData, ResponseErrorConfig<Error>> & { queryKey: TQueryKey }
+  } as unknown as QueryObserverOptions, queryClient) as UseQueryResult<TData, ResponseErrorConfig<ListarRecebimentosCompraStatus400 | ListarRecebimentosCompraStatus404 | ListarRecebimentosCompraStatus409>> & { queryKey: TQueryKey }
 
   queryResult.queryKey = queryKey as TQueryKey
 

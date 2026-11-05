@@ -7,6 +7,12 @@ export type ItemRecebimentoRequestDTO = {
   /**
    * @description
    * Format: `uuid`
+   * @type string | undefined
+   */
+  id?: string;
+  /**
+   * @description
+   * Format: `uuid`
    * @type string
    */
   idItemCompra: string;
@@ -21,5 +27,10 @@ export type ItemRecebimentoRequestDTO = {
    * @type number
    */
   quantidade: number;
+  /**
+   * @minLength 0
+   * @maxLength 255
+   * @type string | undefined
+   */
   observacao?: string;
 };

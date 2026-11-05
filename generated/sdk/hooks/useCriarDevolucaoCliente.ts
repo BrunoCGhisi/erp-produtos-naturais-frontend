@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarDevolucaoClienteOptions, CriarDevolucaoClienteStatus200 } from '../types/CriarDevolucaoCliente'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarDevolucaoCliente } from '../clients/criarDevolucaoCliente'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarDevolucaoClienteMutationKey = () => [{ url: '/api/devolucoes-clientes' }] as const
 

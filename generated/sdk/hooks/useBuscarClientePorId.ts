@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { BuscarClientePorIdOptions, BuscarClientePorIdStatus200 } from '../types/BuscarClientePorId'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { buscarClientePorId } from '../clients/buscarClientePorId'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const buscarClientePorIdQueryKey = ({ path }: Omit<BuscarClientePorIdOptions, 'headers'>) => [{ url: '/api/clientes/:id', params: path }] as const
 

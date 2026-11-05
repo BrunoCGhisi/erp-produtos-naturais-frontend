@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarUsuarioOptions, CriarUsuarioStatus200 } from '../types/CriarUsuario'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarUsuario } from '../clients/criarUsuario'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarUsuarioMutationKey = () => [{ url: '/api/usuarios' }] as const
 

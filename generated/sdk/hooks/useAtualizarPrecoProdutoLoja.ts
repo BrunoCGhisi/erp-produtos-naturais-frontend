@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { AtualizarPrecoProdutoLojaOptions, AtualizarPrecoProdutoLojaStatus200 } from '../types/AtualizarPrecoProdutoLoja'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { atualizarPrecoProdutoLoja } from '../clients/atualizarPrecoProdutoLoja'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const atualizarPrecoProdutoLojaMutationKey = () => [{ url: '/api/produtos-precos-loja/:id' }] as const
 

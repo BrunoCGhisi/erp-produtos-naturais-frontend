@@ -3,19 +3,38 @@
 * Do not edit manually.
 */
 
+import type { ApiError } from './ApiError'
 import type { RecebimentoCompraResponseDTO } from './RecebimentoCompraResponseDTO'
 
+export type ListarRecebimentosCompraQuery = {
+  /**
+   * @description
+   * Format: `uuid`
+   * @type string | undefined
+   */
+  idCompra?: string;
+};
+
 export type ListarRecebimentosCompraStatus200 = RecebimentoCompraResponseDTO[];
+
+export type ListarRecebimentosCompraStatus400 = ApiError;
+
+export type ListarRecebimentosCompraStatus404 = ApiError;
+
+export type ListarRecebimentosCompraStatus409 = ApiError;
 
 export type ListarRecebimentosCompraOptions = {
   body?: never;
   path?: never;
-  query?: never;
+  query?: ListarRecebimentosCompraQuery;
   headers?: never;
 };
 
 export type ListarRecebimentosCompraResponses = {
   '200': ListarRecebimentosCompraStatus200;
+  '400': ListarRecebimentosCompraStatus400;
+  '404': ListarRecebimentosCompraStatus404;
+  '409': ListarRecebimentosCompraStatus409;
 };
 
 /**

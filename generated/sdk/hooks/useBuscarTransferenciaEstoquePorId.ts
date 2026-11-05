@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { BuscarTransferenciaEstoquePorIdOptions, BuscarTransferenciaEstoquePorIdStatus200 } from '../types/BuscarTransferenciaEstoquePorId'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { buscarTransferenciaEstoquePorId } from '../clients/buscarTransferenciaEstoquePorId'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const buscarTransferenciaEstoquePorIdQueryKey = ({ path }: Omit<BuscarTransferenciaEstoquePorIdOptions, 'headers'>) => [{ url: '/api/transferencias-estoque/:id', params: path }] as const
 

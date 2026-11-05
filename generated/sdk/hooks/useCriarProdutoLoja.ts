@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarProdutoLojaOptions, CriarProdutoLojaStatus200 } from '../types/CriarProdutoLoja'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarProdutoLoja } from '../clients/criarProdutoLoja'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarProdutoLojaMutationKey = () => [{ url: '/api/produtos-loja' }] as const
 

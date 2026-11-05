@@ -3,10 +3,26 @@
 * Do not edit manually.
 */
 
+import type { ApiError } from './ApiError'
 import type { RecebimentoCompraRequestDTO } from './RecebimentoCompraRequestDTO'
 import type { RecebimentoCompraResponseDTO } from './RecebimentoCompraResponseDTO'
 
-export type CriarRecebimentoCompraStatus200 = RecebimentoCompraResponseDTO;
+export type CriarRecebimentoCompraHeaders = {
+  /**
+   * @description
+   * Format: `uuid`
+   * @type string
+   */
+  'Idempotency-Key': string;
+};
+
+export type CriarRecebimentoCompraStatus201 = RecebimentoCompraResponseDTO;
+
+export type CriarRecebimentoCompraStatus400 = ApiError;
+
+export type CriarRecebimentoCompraStatus404 = ApiError;
+
+export type CriarRecebimentoCompraStatus409 = ApiError;
 
 export type CriarRecebimentoCompraBody = RecebimentoCompraRequestDTO;
 
@@ -14,14 +30,17 @@ export type CriarRecebimentoCompraOptions = {
   body: CriarRecebimentoCompraBody;
   path?: never;
   query?: never;
-  headers?: never;
+  headers: CriarRecebimentoCompraHeaders;
 };
 
 export type CriarRecebimentoCompraResponses = {
-  '200': CriarRecebimentoCompraStatus200;
+  '201': CriarRecebimentoCompraStatus201;
+  '400': CriarRecebimentoCompraStatus400;
+  '404': CriarRecebimentoCompraStatus404;
+  '409': CriarRecebimentoCompraStatus409;
 };
 
 /**
  * @description Union of all possible responses
  */
-export type CriarRecebimentoCompraResponse = CriarRecebimentoCompraStatus200;
+export type CriarRecebimentoCompraResponse = CriarRecebimentoCompraStatus201;

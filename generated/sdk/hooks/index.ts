@@ -30,6 +30,7 @@ export { buscarUnidadeMedidaPorIdQueryKey, buscarUnidadeMedidaPorIdQueryOptions,
 export { buscarUsuarioPorIdQueryKey, buscarUsuarioPorIdQueryOptions, useBuscarUsuarioPorId } from './useBuscarUsuarioPorId'
 export { buscarVendaPorIdQueryKey, buscarVendaPorIdQueryOptions, useBuscarVendaPorId } from './useBuscarVendaPorId'
 export { concluirAjusteEstoqueMutationKey, concluirAjusteEstoqueMutationOptions, useConcluirAjusteEstoque } from './useConcluirAjusteEstoque'
+export { concluirRecebimentoCompraMutationKey, concluirRecebimentoCompraMutationOptions, useConcluirRecebimentoCompra } from './useConcluirRecebimentoCompra'
 export { concluirTransferenciaEstoqueMutationKey, concluirTransferenciaEstoqueMutationOptions, useConcluirTransferenciaEstoque } from './useConcluirTransferenciaEstoque'
 export { consultarSaldoEstoqueQueryKey, consultarSaldoEstoqueQueryOptions, useConsultarSaldoEstoque } from './useConsultarSaldoEstoque'
 export { criarAjusteEstoqueMutationKey, criarAjusteEstoqueMutationOptions, useCriarAjusteEstoque } from './useCriarAjusteEstoque'

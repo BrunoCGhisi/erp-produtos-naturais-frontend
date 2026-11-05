@@ -33,6 +33,7 @@ const salesLinks = [
   { href: "/clientes", label: "Clientes", icon: Store },
 ];
 const purchaseLinks = [
+  { href: "/recebimentos", label: "Recebimentos", icon: Package },
   { href: "/compras", label: "Pedidos", icon: Package },
   { href: "/fornecedores", label: "Fornecedores", icon: Store },
 ];

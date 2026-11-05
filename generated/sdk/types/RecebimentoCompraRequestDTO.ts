@@ -25,9 +25,16 @@ export type RecebimentoCompraRequestDTO = {
   /**
    * @description
    * Format: `uuid`
-   * @type string | undefined
+   * @type string
    */
-  idUsuario?: string;
+  idUsuario: string;
+  /**
+   * @description
+   * Format: `int32`
+   * @minimum 0
+   * @type integer | undefined
+   */
+  versao?: number;
   /**
    * @description
    * Format: `date-time`
@@ -35,6 +42,11 @@ export type RecebimentoCompraRequestDTO = {
    */
   dataRecebimento?: string;
   status?: RecebimentoCompraRequestDTOStatusEnumKey;
+  /**
+   * @minLength 0
+   * @maxLength 255
+   * @type string | undefined
+   */
   observacao?: string;
   itens: ItemRecebimentoRequestDTO[];
 };

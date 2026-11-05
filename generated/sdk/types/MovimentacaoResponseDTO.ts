@@ -74,4 +74,10 @@ export type MovimentacaoResponseDTO = {
    * @type string | undefined
    */
   idAjusteEstoque?: string;
+  /**
+   * @description
+   * Format: `uuid`
+   * @type string | undefined
+   */
+  idRecebimentoCompra?: string;
 };

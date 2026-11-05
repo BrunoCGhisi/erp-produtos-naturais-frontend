@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { BuscarDevolucaoClientePorIdOptions, BuscarDevolucaoClientePorIdStatus200 } from '../types/BuscarDevolucaoClientePorId'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { buscarDevolucaoClientePorId } from '../clients/buscarDevolucaoClientePorId'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const buscarDevolucaoClientePorIdQueryKey = ({ path }: Omit<BuscarDevolucaoClientePorIdOptions, 'headers'>) => [{ url: '/api/devolucoes-clientes/:id', params: path }] as const
 

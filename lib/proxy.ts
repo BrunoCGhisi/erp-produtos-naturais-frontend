@@ -4,6 +4,7 @@ const resources = new Set([
   "usuarios",
   "fornecedores",
   "compras",
+  "recebimentos-compras",
   "estoques",
   "movimentacoes-estoque",
   "produtos",
@@ -19,11 +20,13 @@ export async function forwardCatalog(request: Request, path: string[]) {
   const [resource, id] = path;
   const inventory =
     resource === "estoques" || resource === "movimentacoes-estoque";
+  const receipt = resource === "recebimentos-compras";
+  const conclude = receipt && path.length === 3 && path[2] === "concluir";
   const balance = resource === "estoques" && id === "saldo";
   if (
     !resources.has(resource) ||
     (resource === "usuarios" && path.length !== 1) ||
-    path.length > 2 ||
+    (path.length > 2 && !conclude) ||
     (id && !balance && !uuid.test(id))
   )
     return Response.json(
@@ -31,7 +34,9 @@ export async function forwardCatalog(request: Request, path: string[]) {
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
   const allowed =
-    resource === "usuarios"
+    receipt
+      ? conclude ? ["POST"] : id ? ["GET", "PUT", "DELETE"] : ["GET", "POST"]
+      : resource === "usuarios"
       ? ["GET"]
       : resource === "vendas"
         ? id
@@ -54,6 +59,16 @@ export async function forwardCatalog(request: Request, path: string[]) {
         headers: { Allow: allowed.join(", "), "Cache-Control": "no-store" },
       },
     );
+  if (receipt) {
+    const params = new URL(request.url).searchParams;
+    const valid = [...params.keys()].every(k => k === "idCompra" || k === "versao") &&
+      (!params.has("idCompra") || (!id && params.getAll("idCompra").length === 1 && uuid.test(params.get("idCompra") || ""))) &&
+      (!params.has("versao") || (request.method === "DELETE" && params.getAll("versao").length === 1 && /^\d+$/.test(params.get("versao") || ""))) &&
+      (request.method !== "DELETE" || params.has("versao"));
+    if (!valid) return Response.json({ message: "Parâmetros de recebimento inválidos." }, { status: 400 });
+    if (request.method === "POST" && !id && !uuid.test(request.headers.get("Idempotency-Key") || ""))
+      return Response.json({ message: "Informe Idempotency-Key UUID." }, { status: 400 });
+  }
   if (balance) {
     const params = new URL(request.url).searchParams;
     if (
@@ -78,6 +93,7 @@ export async function forwardCatalog(request: Request, path: string[]) {
       signal: AbortSignal.timeout(15000),
       headers: {
         Accept: "application/json",
+        ...(receipt && !id && request.method === "POST" ? { "Idempotency-Key": request.headers.get("Idempotency-Key")! } : {}),
         ...(request.method === "POST" || request.method === "PUT"
           ? { "Content-Type": "application/json" }
           : {}),

@@ -1,11 +1,10 @@
 # SDK do backend
 
 - Repositório: https://github.com/Zayma1/erp-produtos-naturais-backend
-- Branch: `novaVersao` (referência local `origin/novaVersao`).
-- Commit: `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
-- Origem: `generated/sdk`, copiado integralmente com `git archive`, incluindo `.kubb`.
-- Nenhum arquivo gerado foi editado. O SDK completo inclui operações fora do MVP; o proxy aceita apenas o catálogo.
-- A URL padrão gerada aponta para Render, mas `components/providers.tsx` a substitui por uma base vazia antes de renderizar os consumidores. As URLs geradas já começam por `/api`, portanto não se deve configurar `baseURL: '/api'`, que duplicaria o prefixo.
-- Referência remota `refs/heads/novaVersao` conferida com `git ls-remote` em 04/11/2026: permanece em `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
-
-Para atualizar, confira primeiro a branch remota e o contrato e substitua a pasta **inteira**, preservando arquivos ocultos. Mantenha validações, proxy e comportamento do frontend fora dos arquivos gerados.
+- Branch: `stage7-receiving`.
+- Commit: `f335d525ea6ed107cd00824031ded904020967fe`.
+- Contrato: `openapi-stage7.json` obtido de `/v3/api-docs` do backend local com PostgreSQL descartável e migrações V1/V2.
+- Geração: Kubb 5.15.3, lockfile do backend, `OPENAPI_FILE=./openapi-stage7.json npm run sdk:generate`.
+- A pasta `generated/sdk` inteira, incluindo `.kubb`, foi copiada desse commit. Nenhum arquivo gerado foi editado manualmente.
+- Base gerada vazia; `components/providers.tsx` mantém chamadas no proxy da aplicação. Contrato completo inclui operações que o proxy continua bloqueando.
+- `scripts/integration.mjs` fixa esse commit. `INTEGRATION_BACKEND_REPO` permite somente trocar a origem do clone para validar o mesmo commit em checkout local, antes de publicá-lo.

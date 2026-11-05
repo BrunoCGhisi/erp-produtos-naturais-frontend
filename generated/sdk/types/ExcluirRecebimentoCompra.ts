@@ -3,6 +3,8 @@
 * Do not edit manually.
 */
 
+import type { ApiError } from './ApiError'
+
 export type ExcluirRecebimentoCompraPath = {
   /**
    * @description
@@ -12,17 +14,35 @@ export type ExcluirRecebimentoCompraPath = {
   id: string;
 };
 
+export type ExcluirRecebimentoCompraQuery = {
+  /**
+   * @description
+   * Format: `int32`
+   * @type integer
+   */
+  versao: number;
+};
+
 export type ExcluirRecebimentoCompraStatus204 = unknown;
+
+export type ExcluirRecebimentoCompraStatus400 = ApiError;
+
+export type ExcluirRecebimentoCompraStatus404 = ApiError;
+
+export type ExcluirRecebimentoCompraStatus409 = ApiError;
 
 export type ExcluirRecebimentoCompraOptions = {
   body?: never;
   path: ExcluirRecebimentoCompraPath;
-  query?: never;
+  query: ExcluirRecebimentoCompraQuery;
   headers?: never;
 };
 
 export type ExcluirRecebimentoCompraResponses = {
   '204': ExcluirRecebimentoCompraStatus204;
+  '400': ExcluirRecebimentoCompraStatus400;
+  '404': ExcluirRecebimentoCompraStatus404;
+  '409': ExcluirRecebimentoCompraStatus409;
 };
 
 /**

@@ -3,17 +3,17 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
-import type { AtualizarRecebimentoCompraOptions, AtualizarRecebimentoCompraStatus200 } from '../types/AtualizarRecebimentoCompra'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { AtualizarRecebimentoCompraOptions, AtualizarRecebimentoCompraStatus200, AtualizarRecebimentoCompraStatus400, AtualizarRecebimentoCompraStatus404, AtualizarRecebimentoCompraStatus409 } from '../types/AtualizarRecebimentoCompra'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { atualizarRecebimentoCompra } from '../clients/atualizarRecebimentoCompra'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const atualizarRecebimentoCompraMutationKey = () => [{ url: '/api/recebimentos-compras/:id' }] as const
 
 export function atualizarRecebimentoCompraMutationOptions<TContext = unknown>(config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
   const mutationKey = atualizarRecebimentoCompraMutationKey()
-  return mutationOptions<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, AtualizarRecebimentoCompraOptions, TContext>({
+  return mutationOptions<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<AtualizarRecebimentoCompraStatus400 | AtualizarRecebimentoCompraStatus404 | AtualizarRecebimentoCompraStatus409>, AtualizarRecebimentoCompraOptions, TContext>({
     mutationKey,
     mutationFn: async({ path, body }) => {
       return atualizarRecebimentoCompra({ ...config, path, body, throwOnError: true }).unwrap()
@@ -25,18 +25,18 @@ export function atualizarRecebimentoCompraMutationOptions<TContext = unknown>(co
  * {@link /api/recebimentos-compras/:id}
  */
 export function useAtualizarRecebimentoCompra<TContext>(options: {
-  mutation?: UseMutationOptions<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, AtualizarRecebimentoCompraOptions, TContext> & { client?: QueryClient },
+  mutation?: UseMutationOptions<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<AtualizarRecebimentoCompraStatus400 | AtualizarRecebimentoCompraStatus404 | AtualizarRecebimentoCompraStatus409>, AtualizarRecebimentoCompraOptions, TContext> & { client?: QueryClient },
   client?: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>>,
 } = {}) {
   const { mutation = {}, client: config = {} } = options ?? {}
   const { client: queryClient, ...mutationOptions } = mutation;
   const mutationKey = mutationOptions.mutationKey ?? atualizarRecebimentoCompraMutationKey()
 
-  const baseOptions = atualizarRecebimentoCompraMutationOptions(config) as UseMutationOptions<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, AtualizarRecebimentoCompraOptions, TContext>
+  const baseOptions = atualizarRecebimentoCompraMutationOptions(config) as UseMutationOptions<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<AtualizarRecebimentoCompraStatus400 | AtualizarRecebimentoCompraStatus404 | AtualizarRecebimentoCompraStatus409>, AtualizarRecebimentoCompraOptions, TContext>
 
-  return useMutation<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, AtualizarRecebimentoCompraOptions, TContext>({
+  return useMutation<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<AtualizarRecebimentoCompraStatus400 | AtualizarRecebimentoCompraStatus404 | AtualizarRecebimentoCompraStatus409>, AtualizarRecebimentoCompraOptions, TContext>({
     ...baseOptions,
     mutationKey,
     ...mutationOptions,
-  }, queryClient) as UseMutationResult<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, AtualizarRecebimentoCompraOptions, TContext>
+  }, queryClient) as UseMutationResult<AtualizarRecebimentoCompraStatus200, ResponseErrorConfig<AtualizarRecebimentoCompraStatus400 | AtualizarRecebimentoCompraStatus404 | AtualizarRecebimentoCompraStatus409>, AtualizarRecebimentoCompraOptions, TContext>
 }

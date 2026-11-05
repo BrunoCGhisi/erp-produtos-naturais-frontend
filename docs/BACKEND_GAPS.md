@@ -1,8 +1,8 @@
 # Lacunas do backend — Vila Verde
 
-Registro para encaminhamento à equipe de backend. Inspeção em 05/11/2026 do commit fixado abaixo, sem mudanças no backend. “Confirmado por inspeção” comprova o código/contrato observado; não equivale a reprodução HTTP. Suspeitas e instalações externas são explicitadas por entrada.
+Registro para encaminhamento à equipe de backend. Registro inicial em 05/11/2026 do backend legado; a etapa 7 acrescenta correções de recebimento no commit `f335d525ea6ed107cd00824031ded904020967fe`. “Confirmado por inspeção” comprova o código/contrato observado; não equivale a reprodução HTTP. Suspeitas e instalações externas são explicitadas por entrada.
 
-IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de correção, teste e evidência; nenhuma entrada foi resolvida nesta etapa. Dependências continuam fora do escopo.
+IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de correção, teste e evidência; o resultado de cada correção e sua evidência ficam na própria entrada. Dependências continuam fora do escopo.
 
 ## Índice
 
@@ -44,6 +44,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Aceite testável:** Um PostgreSQL vazio, preparado apenas pelo repositório, conclui ajuste e transferência, atualiza estoque uma única vez e desfaz tudo em erro.
 - **Commit de correção:** pendente.
 
+- **Atualização da etapa 7:** Etapa 7: Flyway V1/V2 e validação do esquema agora persistem recebimentos/estoque entre reinícios. As funções de ajustes/transferências continuam ausentes; esta lacuna não está encerrada.
+
 <a id="bg-002"></a>
 ## BG-002 — Detalhes de ajustes e transferências sem itens
 
@@ -70,6 +72,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Aceite testável:** Receber parte e depois o restante incrementa estoque e quantidade recebida, progride a compra e não duplica efeitos em repetição/rollback.
 - **Commit de correção:** pendente.
 
+- **Atualização da etapa 7:** Etapa 7: correção implementada no backend `f335d525ea6ed107cd00824031ded904020967fe`. Confirmação explícita transacional, parcial/final, lock de compra/recebimento, incremento atômico de estoque e movimento único por item. Rascunhos sem efeitos, confirmação repetível e recebimento concluído imutável. Testes PostgreSQL cobrem concorrência e rollback. **Resolvida na etapa 7.** Evidência: 16 testes PostgreSQL verdes na [CI do backend](https://github.com/Zayma1/erp-produtos-naturais-backend/actions/runs/42082561351), integração local descartável com 12 cenários reais desktop/mobile (incluindo recebimento parcial/final, edição, exclusão, saldo e link de movimento) e comparação integral após reiniciar o backend. `scripts/integration.mjs` fixa o commit de correção; evidências remotas frontend no [workflow da branch](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/workflows/ci.yml?query=branch%3Afeat%2Fcatalog).
+
 <a id="bg-004"></a>
 ## BG-004 — Edição de recebimento acrescenta itens
 
@@ -82,6 +86,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Correção solicitada:** Definir substituição completa ou atualização por ID e garantir integridade em transação.
 - **Aceite testável:** PUT duas vezes com um item mantém exatamente um item com a quantidade informada, sem duplicatas.
 - **Commit de correção:** pendente.
+
+- **Atualização da etapa 7:** Etapa 7: correção implementada no mesmo commit. PUT substitui a coleção, preserva IDs mantidos (inclusive sem ID enviado), rejeita ID externo, exige versão e exclui itens removidos em transação. `ReceivingTests.draftReplacementPreservesIdentityAndHasNoStockEffects` faz dois PUTs e verifica uma linha/mesmo ID. **Resolvida na etapa 7.** Evidência: 16 testes PostgreSQL verdes na [CI do backend](https://github.com/Zayma1/erp-produtos-naturais-backend/actions/runs/42082561351), integração local descartável com 12 cenários reais desktop/mobile (incluindo recebimento parcial/final, edição, exclusão, saldo e link de movimento) e comparação integral após reiniciar o backend. `scripts/integration.mjs` fixa o commit de correção; evidências remotas frontend no [workflow da branch](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/workflows/ci.yml?query=branch%3Afeat%2Fcatalog).
 
 <a id="bg-005"></a>
 ## BG-005 — Exclusão de compra com itens viola FK
@@ -121,6 +127,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Correção solicitada:** Preservar identidade de itens existentes ou remover id do contrato e proibir explicitamente substituição com referências.
 - **Aceite testável:** Um item mantido no PUT preserva ID e referências; item removido com referências produz erro de negócio claro e rollback completo.
 - **Commit de correção:** pendente.
+
+- **Atualização da etapa 7:** Etapa 7, progresso parcial: itens de recebimento preservam identidade; a compra referenciada por qualquer recebimento passa a bloquear PUT/DELETE antes da substituição. Excluir todos os rascunhos libera uma compra ainda editável. PUT de compra sem recebimentos continua recriando seus próprios itens; BG-007 permanece aberta.
 
 <a id="bg-008"></a>
 ## BG-008 — Vendas sem fechamento e baixa de estoque
@@ -173,6 +181,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Correção solicitada:** Definir autenticação, autorização por operação/loja e identidade auditável no servidor.
 - **Aceite testável:** Sem credencial válida retorna 401; sem permissão retorna 403; cliente não consegue escolher identidade ou acessar loja indevida.
 - **Commit de correção:** pendente.
+
+- **Atualização da etapa 7:** Etapa 7: recebimento exige operador existente, escolhido explicitamente na interface interna. Essa seleção não autentica nem autoriza o usuário. BG-011 continua aberta.
 
 <a id="bg-012"></a>
 ## BG-012 — Precedência de preços sobrepostos indefinida
@@ -304,6 +314,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Aceite testável:** Repetir a mesma chave/payload, inclusive após perda de resposta e em chamadas concorrentes, retorna o mesmo ID com exatamente um documento; payload divergente retorna conflito.
 - **Commit de correção:** pendente.
 
+- **Atualização da etapa 7:** Etapa 7, progresso restrito a recebimentos: POST exige chave UUID; chave/hash canônico/identidade são persistidos transacionalmente, com lock da chave, replay concorrente e tombstone após exclusão. A interface guarda a chave e o payload exato antes do envio e os reutiliza em resultado incerto, inclusive após reload. Compras e vendas continuam sem idempotência de criação; BG-021 permanece aberta para esses caminhos.
+
 <a id="bg-022"></a>
 ## BG-022 — Compra sem versão ou precondição de concorrência
 
@@ -316,3 +328,5 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Correção solicitada:** Expor versão/ETag e exigir precondição no PUT, incluindo status/itens na mesma transação.
 - **Aceite testável:** Dois clientes leem a mesma versão; após o primeiro PUT, o segundo recebe 409/412 sem alterar cabeçalho/itens. Resposta informa como recarregar a versão atual.
 - **Commit de correção:** pendente.
+
+- **Atualização da etapa 7:** Etapa 7, progresso restrito a recebimentos: versão otimista em PUT/DELETE, bloqueio de compra antes de editar/criar/confirmar e revisão explícita após conflito. Confirmação revalida pendentes sob lock. Não há versão otimista no PUT geral de compras, nem controle equivalente para vendas; BG-022 permanece aberta.

@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarFornecedorOptions, CriarFornecedorStatus200 } from '../types/CriarFornecedor'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarFornecedor } from '../clients/criarFornecedor'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarFornecedorMutationKey = () => [{ url: '/api/fornecedores' }] as const
 

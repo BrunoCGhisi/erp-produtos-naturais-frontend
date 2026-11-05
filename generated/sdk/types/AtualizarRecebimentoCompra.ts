@@ -3,6 +3,7 @@
 * Do not edit manually.
 */
 
+import type { ApiError } from './ApiError'
 import type { RecebimentoCompraRequestDTO } from './RecebimentoCompraRequestDTO'
 import type { RecebimentoCompraResponseDTO } from './RecebimentoCompraResponseDTO'
 
@@ -17,6 +18,12 @@ export type AtualizarRecebimentoCompraPath = {
 
 export type AtualizarRecebimentoCompraStatus200 = RecebimentoCompraResponseDTO;
 
+export type AtualizarRecebimentoCompraStatus400 = ApiError;
+
+export type AtualizarRecebimentoCompraStatus404 = ApiError;
+
+export type AtualizarRecebimentoCompraStatus409 = ApiError;
+
 export type AtualizarRecebimentoCompraBody = RecebimentoCompraRequestDTO;
 
 export type AtualizarRecebimentoCompraOptions = {
@@ -28,6 +35,9 @@ export type AtualizarRecebimentoCompraOptions = {
 
 export type AtualizarRecebimentoCompraResponses = {
   '200': AtualizarRecebimentoCompraStatus200;
+  '400': AtualizarRecebimentoCompraStatus400;
+  '404': AtualizarRecebimentoCompraStatus404;
+  '409': AtualizarRecebimentoCompraStatus409;
 };
 
 /**

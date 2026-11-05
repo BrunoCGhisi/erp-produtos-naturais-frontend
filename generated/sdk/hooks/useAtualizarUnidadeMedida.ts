@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { AtualizarUnidadeMedidaOptions, AtualizarUnidadeMedidaStatus200 } from '../types/AtualizarUnidadeMedida'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { atualizarUnidadeMedida } from '../clients/atualizarUnidadeMedida'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const atualizarUnidadeMedidaMutationKey = () => [{ url: '/api/unidades-medida/:id' }] as const
 

@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
-import type { BuscarRecebimentoCompraPorIdOptions, BuscarRecebimentoCompraPorIdStatus200 } from '../types/BuscarRecebimentoCompraPorId'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { BuscarRecebimentoCompraPorIdOptions, BuscarRecebimentoCompraPorIdStatus200, BuscarRecebimentoCompraPorIdStatus400, BuscarRecebimentoCompraPorIdStatus404, BuscarRecebimentoCompraPorIdStatus409 } from '../types/BuscarRecebimentoCompraPorId'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { buscarRecebimentoCompraPorId } from '../clients/buscarRecebimentoCompraPorId'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const buscarRecebimentoCompraPorIdQueryKey = ({ path }: Omit<BuscarRecebimentoCompraPorIdOptions, 'headers'>) => [{ url: '/api/recebimentos-compras/:id', params: path }] as const
 
@@ -15,7 +15,7 @@ type BuscarRecebimentoCompraPorIdQueryKey = ReturnType<typeof buscarRecebimentoC
 
 export function buscarRecebimentoCompraPorIdQueryOptions({ path }: BuscarRecebimentoCompraPorIdOptions, config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
   const queryKey = buscarRecebimentoCompraPorIdQueryKey({ path })
-  return queryOptions<BuscarRecebimentoCompraPorIdStatus200, ResponseErrorConfig<Error>, BuscarRecebimentoCompraPorIdStatus200, typeof queryKey>({
+  return queryOptions<BuscarRecebimentoCompraPorIdStatus200, ResponseErrorConfig<BuscarRecebimentoCompraPorIdStatus400 | BuscarRecebimentoCompraPorIdStatus404 | BuscarRecebimentoCompraPorIdStatus409>, BuscarRecebimentoCompraPorIdStatus200, typeof queryKey>({
    queryKey,
    queryFn: async ({ signal }) => {
       return buscarRecebimentoCompraPorId({ ...config, path, signal: config.signal ?? signal, throwOnError: true }).unwrap()
@@ -27,7 +27,7 @@ export function buscarRecebimentoCompraPorIdQueryOptions({ path }: BuscarRecebim
  * {@link /api/recebimentos-compras/:id}
  */
 export function useBuscarRecebimentoCompraPorId<TData = BuscarRecebimentoCompraPorIdStatus200, TQueryData = BuscarRecebimentoCompraPorIdStatus200, TQueryKey extends QueryKey = BuscarRecebimentoCompraPorIdQueryKey>({ path }: { path: BuscarRecebimentoCompraPorIdOptions['path'] | (() => BuscarRecebimentoCompraPorIdOptions['path']) }, options: {
-  query?: Partial<QueryObserverOptions<BuscarRecebimentoCompraPorIdStatus200, ResponseErrorConfig<Error>, TData, TQueryData, TQueryKey>> & { client?: QueryClient },
+  query?: Partial<QueryObserverOptions<BuscarRecebimentoCompraPorIdStatus200, ResponseErrorConfig<BuscarRecebimentoCompraPorIdStatus400 | BuscarRecebimentoCompraPorIdStatus404 | BuscarRecebimentoCompraPorIdStatus409>, TData, TQueryData, TQueryKey>> & { client?: QueryClient },
   client?: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>>
 } = {}) {
   const { query: queryConfig = {}, client: config = {} } = options ?? {}
@@ -39,7 +39,7 @@ export function useBuscarRecebimentoCompraPorId<TData = BuscarRecebimentoCompraP
    ...buscarRecebimentoCompraPorIdQueryOptions(resolvedParams, config),
    ...resolvedOptions,
    queryKey,
-  } as unknown as QueryObserverOptions, queryClient) as UseQueryResult<TData, ResponseErrorConfig<Error>> & { queryKey: TQueryKey }
+  } as unknown as QueryObserverOptions, queryClient) as UseQueryResult<TData, ResponseErrorConfig<BuscarRecebimentoCompraPorIdStatus400 | BuscarRecebimentoCompraPorIdStatus404 | BuscarRecebimentoCompraPorIdStatus409>> & { queryKey: TQueryKey }
 
   queryResult.queryKey = queryKey as TQueryKey
 

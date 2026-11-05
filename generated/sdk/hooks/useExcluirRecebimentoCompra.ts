@@ -3,20 +3,20 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
-import type { ExcluirRecebimentoCompraOptions, ExcluirRecebimentoCompraStatus204 } from '../types/ExcluirRecebimentoCompra'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { ExcluirRecebimentoCompraOptions, ExcluirRecebimentoCompraStatus204, ExcluirRecebimentoCompraStatus400, ExcluirRecebimentoCompraStatus404, ExcluirRecebimentoCompraStatus409 } from '../types/ExcluirRecebimentoCompra'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { excluirRecebimentoCompra } from '../clients/excluirRecebimentoCompra'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const excluirRecebimentoCompraMutationKey = () => [{ url: '/api/recebimentos-compras/:id' }] as const
 
 export function excluirRecebimentoCompraMutationOptions<TContext = unknown>(config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
   const mutationKey = excluirRecebimentoCompraMutationKey()
-  return mutationOptions<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<Error>, ExcluirRecebimentoCompraOptions, TContext>({
+  return mutationOptions<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<ExcluirRecebimentoCompraStatus400 | ExcluirRecebimentoCompraStatus404 | ExcluirRecebimentoCompraStatus409>, ExcluirRecebimentoCompraOptions, TContext>({
     mutationKey,
-    mutationFn: async({ path }) => {
-      return excluirRecebimentoCompra({ ...config, path, throwOnError: true }).unwrap()
+    mutationFn: async({ path, query }) => {
+      return excluirRecebimentoCompra({ ...config, path, query, throwOnError: true }).unwrap()
     },
   })
 }
@@ -25,18 +25,18 @@ export function excluirRecebimentoCompraMutationOptions<TContext = unknown>(conf
  * {@link /api/recebimentos-compras/:id}
  */
 export function useExcluirRecebimentoCompra<TContext>(options: {
-  mutation?: UseMutationOptions<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<Error>, ExcluirRecebimentoCompraOptions, TContext> & { client?: QueryClient },
+  mutation?: UseMutationOptions<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<ExcluirRecebimentoCompraStatus400 | ExcluirRecebimentoCompraStatus404 | ExcluirRecebimentoCompraStatus409>, ExcluirRecebimentoCompraOptions, TContext> & { client?: QueryClient },
   client?: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>>,
 } = {}) {
   const { mutation = {}, client: config = {} } = options ?? {}
   const { client: queryClient, ...mutationOptions } = mutation;
   const mutationKey = mutationOptions.mutationKey ?? excluirRecebimentoCompraMutationKey()
 
-  const baseOptions = excluirRecebimentoCompraMutationOptions(config) as UseMutationOptions<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<Error>, ExcluirRecebimentoCompraOptions, TContext>
+  const baseOptions = excluirRecebimentoCompraMutationOptions(config) as UseMutationOptions<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<ExcluirRecebimentoCompraStatus400 | ExcluirRecebimentoCompraStatus404 | ExcluirRecebimentoCompraStatus409>, ExcluirRecebimentoCompraOptions, TContext>
 
-  return useMutation<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<Error>, ExcluirRecebimentoCompraOptions, TContext>({
+  return useMutation<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<ExcluirRecebimentoCompraStatus400 | ExcluirRecebimentoCompraStatus404 | ExcluirRecebimentoCompraStatus409>, ExcluirRecebimentoCompraOptions, TContext>({
     ...baseOptions,
     mutationKey,
     ...mutationOptions,
-  }, queryClient) as UseMutationResult<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<Error>, ExcluirRecebimentoCompraOptions, TContext>
+  }, queryClient) as UseMutationResult<ExcluirRecebimentoCompraStatus204, ResponseErrorConfig<ExcluirRecebimentoCompraStatus400 | ExcluirRecebimentoCompraStatus404 | ExcluirRecebimentoCompraStatus409>, ExcluirRecebimentoCompraOptions, TContext>
 }

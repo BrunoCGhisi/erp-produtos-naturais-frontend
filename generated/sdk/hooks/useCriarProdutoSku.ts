@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { CriarProdutoSkuOptions, CriarProdutoSkuStatus200 } from '../types/CriarProdutoSku'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarProdutoSku } from '../clients/criarProdutoSku'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarProdutoSkuMutationKey = () => [{ url: '/api/produtos-sku' }] as const
 

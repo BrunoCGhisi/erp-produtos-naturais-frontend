@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ExcluirUsuarioOptions, ExcluirUsuarioStatus200 } from '../types/ExcluirUsuario'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { excluirUsuario } from '../clients/excluirUsuario'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const excluirUsuarioMutationKey = () => [{ url: '/api/usuarios/:id' }] as const
 

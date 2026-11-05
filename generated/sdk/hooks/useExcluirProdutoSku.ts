@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ExcluirProdutoSkuOptions, ExcluirProdutoSkuStatus200 } from '../types/ExcluirProdutoSku'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { excluirProdutoSku } from '../clients/excluirProdutoSku'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const excluirProdutoSkuMutationKey = () => [{ url: '/api/produtos-sku/:id' }] as const
 

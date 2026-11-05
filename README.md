@@ -1,10 +1,10 @@
-# Vila Verde · Visão geral, catálogo, estoque, compras e vendas
+# Vila Verde · Visão geral, catálogo, estoque, compras, recebimentos e vendas
 
 Frontend administrativo em português para visão geral, catálogo, consulta de estoque, fornecedores/compras, clientes/vendas abertas e relatórios CSV de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
 
 ## Estado da implementação
 
-Visão geral, catálogo, estoque, fornecedores/compras, clientes/vendas abertas e CSVs implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md). As limitações verificadas do backend estão em [docs/BACKEND_GAPS.md](docs/BACKEND_GAPS.md).
+Visão geral, catálogo, estoque, fornecedores/compras, clientes/vendas abertas, recebimentos com confirmação e CSVs implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md). As limitações verificadas do backend estão em [docs/BACKEND_GAPS.md](docs/BACKEND_GAPS.md).
 
 Validação anterior do catálogo em 04/11/2026, com Node 24 (a evidência da etapa 2 está no handoff):
 
@@ -32,18 +32,18 @@ Abra http://localhost:3000. A raiz redireciona para `/visao-geral`. O lockfile v
 
 `BACKEND_API_URL=http://localhost:8080` é uma variável **somente do servidor** e deve conter a origem do backend. Reinicie o Next.js após alterá-la. Não use `NEXT_PUBLIC_` nem aponte para Render ao testar mutações.
 
-O navegador chama o mesmo domínio em `/api`. O Route Handler encaminha os recursos de catálogo `produtos`, `categorias`, `unidades-medida`, `lojas`, `produtos-sku`, `produtos-loja` e `produtos-precos-loja`. No catálogo, permite GET/POST de coleções e GET/PUT/DELETE por UUID; vínculos não aceitam PUT. Estoque permite somente GET em `estoques`, `estoques/{uuid}`, `estoques/saldo`, `movimentacoes-estoque` e `movimentacoes-estoque/{uuid}`. O saldo exige `idProduto` e `idLoja` UUIDs válidos; escritas de estoque retornam 405. Mantém parâmetros, códigos HTTP, JSON de erro e respostas vazias 204; desativa cache e limita a espera pelo backend a 15 segundos. Não encaminha credenciais ou cookies. Fornecedores permitem GET/POST de coleção e GET/PUT/DELETE por UUID; compras permitem GET/POST de coleção e GET/PUT por UUID. Exclusão, transições e recebimentos de compra não são encaminhados.
+O navegador chama o mesmo domínio em `/api`. O Route Handler encaminha os recursos de catálogo `produtos`, `categorias`, `unidades-medida`, `lojas`, `produtos-sku`, `produtos-loja` e `produtos-precos-loja`. No catálogo, permite GET/POST de coleções e GET/PUT/DELETE por UUID; vínculos não aceitam PUT. Estoque permite somente GET em `estoques`, `estoques/{uuid}`, `estoques/saldo`, `movimentacoes-estoque` e `movimentacoes-estoque/{uuid}`. O saldo exige `idProduto` e `idLoja` UUIDs válidos; escritas de estoque retornam 405. Mantém parâmetros, códigos HTTP, JSON de erro e respostas vazias 204; desativa cache e limita a espera pelo backend a 15 segundos. Não encaminha credenciais ou cookies. Fornecedores permitem GET/POST de coleção e GET/PUT/DELETE por UUID; compras permitem GET/POST de coleção e GET/PUT por UUID. Exclusão e transições genéricas de compra continuam bloqueadas. Recebimentos permitem GET/POST de coleção, GET/PUT/DELETE por UUID (exclusão exige `versao`) e somente POST em `/{uuid}/concluir`. A criação exige e encaminha `Idempotency-Key` UUID; o proxy não encaminha esse cabeçalho para outras APIs.
 
 ## Backend e SDK
 
-Integração de referência: [`Zayma1/erp-produtos-naturais-backend`](https://github.com/Zayma1/erp-produtos-naturais-backend), branch **`novaVersao`**, commit **`e0f312e611d56ab73a4a8e3d5832f8b8874ff362`**. A branch `main` não tem a API usada aqui. A origem do SDK completo, incluindo `.kubb`, está documentada em [generated/PROVENANCE.md](generated/PROVENANCE.md).
+Integração de referência: [`Zayma1/erp-produtos-naturais-backend`](https://github.com/Zayma1/erp-produtos-naturais-backend), branch **`stage7-receiving`**, commit **`f335d525ea6ed107cd00824031ded904020967fe`**. A branch `main` não tem a API usada aqui. A origem do SDK completo, incluindo `.kubb`, está documentada em [generated/PROVENANCE.md](generated/PROVENANCE.md).
 
-O SDK não foi alterado. `components/providers.tsx` sobrescreve sua origem padrão antes dos componentes consumidores. Como as URLs geradas já começam em `/api`, `baseURL` deve ser vazio para chamadas de mesma origem. Não importe clientes em novos pontos sem usar essa configuração.
+O SDK completo foi regenerado a partir do contrato local do backend de recebimento. `components/providers.tsx` sobrescreve sua origem padrão antes dos componentes consumidores. Como as URLs geradas já começam em `/api`, `baseURL` deve ser vazio para chamadas de mesma origem. Não importe clientes em novos pontos sem usar essa configuração.
 
-A referência remota `novaVersao` foi conferida em 04/11/2026 e continua no commit de integração. Para conferir novamente:
+O commit de integração está fixado no runner; a branch de implementação pode receber novos commits. Para conferir a referência:
 
 ```bash
-git ls-remote https://github.com/Zayma1/erp-produtos-naturais-backend.git refs/heads/novaVersao
+git ls-remote https://github.com/Zayma1/erp-produtos-naturais-backend.git refs/heads/stage7-receiving
 ```
 
 ## Integração descartável
@@ -62,7 +62,7 @@ As portas loopback **8081** (backend) e **3100** (frontend de produção) precis
 
 Logs sem a senha temporária ficam em `integration-artifacts/`; relatório e traces de falha ficam em `playwright-live-report/` e `test-results/live/`. A CI possui um job separado com esses mesmos pré-requisitos e publica os artefatos em falhas.
 
-O backend usa `ddl-auto=create`: os dados precisam sobreviver à recarga do navegador, mas persistência após reiniciar o backend está fora deste marco.
+O backend usa Flyway V1/V2 e `ddl-auto=validate`, com credenciais PostgreSQL por ambiente. A integração reinicia o processo e compara recebimentos completos, compras, estoque e movimentos antes/depois. Bancos existentes exigem backup, preflight e baseline explícito conforme o README do backend; esta implementação não migra bancos compartilhados.
 
 ## Fluxo
 
@@ -76,7 +76,7 @@ As abas fazem operações independentes: uma falha não apaga o que já foi salv
 
 Busca, ordenação e paginação (20 registros) são locais porque a API retorna arrays. Os controles ficam nos parâmetros da URL; produtos também têm filtros de categoria e status. Cadastros de apoio usam modais, e produtos usam páginas completas. Exclusões exigem confirmação e nunca fazem cascata. Erros de integridade permanecem visíveis; formulários mantêm o conteúdo após falhas e bloqueiam novo envio enquanto salvam.
 
-Sem autenticação, destinada a desenvolvimento/demonstração interna. Clientes, vendas, recebimentos, transições de compra, ajustes/transferências de estoque, dashboards, usuários e hospedagem estão fora do escopo.
+Sem autenticação, destinada a desenvolvimento/demonstração interna. Autenticação, gestão de usuários, checkout de vendas, aprovação/cancelamento de compras, reversão, ajustes/transferências e hospedagem estão fora do escopo.
 
 ## Consulta de estoque (etapa 2)
 
@@ -123,7 +123,7 @@ Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://githu
 - Cada compra precisa de pelo menos um item do catálogo: quantidade positiva com até três casas, custo não negativo com até quatro e desconto monetário não negativo com até duas. Não há seleção de usuário, preço de venda automático nem restrição nova de produto por loja/fornecedor.
 - Prévia usa inteiros escalados e HALF_UP por item antes da soma; limites de numeric(14,s) e desconto superior ao bruto são rejeitados. Depois de salvar, os totais retornados pelo backend são autoritativos. Custos exibem até quatro casas.
 - Formulários preservam valores em falhas e exigem consultas de pré-requisitos bem-sucedidas. Se o servidor rejeitar edição por mudança de status, a interface confirma o status salvo e bloqueia novo envio. Falhas de confirmação aparecem separadamente, com retry.
-- **Salvar rascunho não altera estoque.** Quantidades recebidas aparecem apenas no detalhe. Não há exclusão, aprovação, cancelamento, recebimento ou transição de status na UI.
+- **Salvar rascunho não altera estoque.** Quantidades recebidas e pendentes aparecem no detalhe. O recebimento tem rascunho e confirmação separados (etapa 7). Não há exclusão de compra, aprovação ou cancelamento na UI.
 
 `npm run test:integration` também exercita fornecedores/compras com backend e PostgreSQL descartáveis, valida totais persistidos, substituição de itens e estoque inalterado, e reproduz [BG-005](docs/BACKEND_GAPS.md#bg-005). A limpeza remove itens de compra por SQL exclusivamente no container de teste, depois cabeçalhos/fornecedores por API, antes dos pré-requisitos do catálogo. Não há SQL nem exclusão em cascata de compras na aplicação.
 
@@ -176,3 +176,17 @@ Links da aplicação pedem decisão ao sair de um formulário alterado. Fechar/r
 Na edição, a compra é consultada antes da recuperação. Mudança dos campos editáveis, IDs de itens, operador ou status impede aplicar a cópia e a mantém visível para consulta manual; compra ausente/indisponível também mantém o painel. Seleções ausentes dos cadastros atuais permanecem visíveis e precisam ser corrigidas antes do envio. As validações de data, dinheiro e status continuam obrigatórias.
 
 Sucesso confirmado apaga a recuperação e impede reenvio antes de atualizar consultas/navegar. Se essa atualização falhar, o link do registro salvo continua disponível. Falhas de validação/API preservam valores; em erro de rede/timeout ou resposta 5xx, consulte a lista antes de repetir porque a gravação pode ter ocorrido. Não há fila offline nem replay automático. Limites do servidor: BG-021 e BG-022 em [BACKEND_GAPS](docs/BACKEND_GAPS.md).
+
+## Recebimento de compras — etapa 7
+
+Em Compras → Recebimentos consulte rascunhos e confirmações; o detalhe da compra mostra histórico e quantidades pedidas/recebidas/pendentes. “Novo recebimento” abre `/compras/[id]/recebimentos/novo`; selecione itens, quantidades parciais e um operador existente. Quantidades começam vazias; “Preencher pendentes” é uma ação explícita. Operador é identificação interna, sem autenticação.
+
+“Salvar rascunho” não reserva quantidades nem altera estoque. O detalhe em `/recebimentos/[id]` permite editar ou excluir rascunho com confirmação. “Concluir recebimento” exige revisão das quantidades e da loja de destino. A confirmação grava entrada, movimentos, quantidades recebidas e status parcial/recebida em uma única transação. Confirmados ficam somente leitura, com horário da conclusão e links para compra/saldos/movimentos. O histórico de estoque inclui link ao recebimento.
+
+Edições e exclusões exigem versão. Conflitos recarregam dados autoritativos e preservam valores; é preciso aceitar a versão atual e revisar, sem corte de quantidade nem reenvio automático. Recuperação local de sete dias e proteção de navegação cobrem novos recebimentos/edições; uma versão divergente deixa a cópia apenas para consulta. Após aceitar uma nova versão, a recuperação passa a usar essa base.
+
+Antes de criar, o navegador guarda uma chave UUID e o payload exato. Após resultado incerto, inclusive reload, “Repetir envio salvo” repete a mesma operação. O backend mantém chave/hash/identidade e tombstone após exclusão. Sucesso limpa recuperação e bloqueia repetição, mesmo se atualizar a tela falhar. A confirmação é idempotente pelo estado do servidor; o navegador nunca calcula efeitos de estoque.
+
+O frontend invalida todas as queries de API relacionadas após sucesso. O backend impede edição de compra com qualquer recebimento; excluir todos os rascunhos libera uma compra ainda editável. Autenticação, reversão, devoluções, checkout, aprovação e valoração permanecem fora da etapa.
+
+Validação da etapa 7: 16 testes PostgreSQL, 156 testes frontend, regressão desktop/mobile, 12 cenários reais e persistência após reinício passaram localmente. CI backend: [execução final](https://github.com/Zayma1/erp-produtos-naturais-backend/actions/runs/42082561351). A entrega frontend exige os jobs validate/integration no [workflow da branch](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/workflows/ci.yml?query=branch%3Afeat%2Fcatalog). BG-003/BG-004 foram encerradas; demais avanços são restritos ao recebimento e estão detalhados no handoff.

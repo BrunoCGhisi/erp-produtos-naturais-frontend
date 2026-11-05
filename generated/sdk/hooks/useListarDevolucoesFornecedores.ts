@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ListarDevolucoesFornecedoresStatus200 } from '../types/ListarDevolucoesFornecedores'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { listarDevolucoesFornecedores } from '../clients/listarDevolucoesFornecedores'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const listarDevolucoesFornecedoresQueryKey = () => [{ url: '/api/devolucoes-fornecedores' }] as const
 

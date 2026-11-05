@@ -1,4 +1,5 @@
 // Own every service used by this run; never target an existing backend/database.
+import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { openSync, closeSync } from "node:fs";
 import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -11,7 +12,7 @@ import { purchasesSeed } from "./purchases-seed.mjs";
 import { inventorySeed } from "./inventory-seed.mjs";
 
 const root = process.cwd();
-const commit = "e0f312e611d56ab73a4a8e3d5832f8b8874ff362";
+const commit = "f335d525ea6ed107cd00824031ded904020967fe";
 const logs = path.join(root, "integration-artifacts");
 const temp = await mkdtemp(path.join(os.tmpdir(), "vila-integration-"));
 const backend = path.join(temp, "backend");
@@ -89,7 +90,7 @@ try {
     throw new Error("Use Java 21 (confira JAVA_HOME e PATH).");
   await mkdir(backend);
   await run("git", ["init", "--quiet", backend]);
-  await run("git", ["fetch", "--depth=1", "https://github.com/Zayma1/erp-produtos-naturais-backend.git", commit], backend);
+  await run("git", ["fetch", "--depth=1", process.env.INTEGRATION_BACKEND_REPO || "https://github.com/Zayma1/erp-produtos-naturais-backend.git", commit], backend);
   await run("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], backend);
   databaseCreated = true; // Also clean up if Docker is interrupted during startup.
   await run("docker", ["run", "--detach", "--rm", "--name", container,
@@ -100,15 +101,15 @@ try {
   await inspect.done; children.delete(inspect);
   const port = (await readFile(path.join(temp, "database-port.log"), "utf8")).trim();
   for (let attempt = 0; ; attempt++) {
-    try { await run("docker", ["exec", container, "pg_isready", "-U", "catalog", "-d", "catalog"]); break; }
+    try { await run("docker", ["exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "catalog", "-d", "catalog"]); break; }
     catch (error) { if (attempt === 60 || stopping) throw error; await new Promise((resolve) => setTimeout(resolve, 1000)); }
   }
   await run("chmod", ["+x", "mvnw"], backend);
-  const api = start("./mvnw", ["--batch-mode", "--no-transfer-progress", "spring-boot:run"], backend, {
+  const backendEnv = {
     SERVER_ADDRESS: "127.0.0.1", SERVER_PORT: "8081",
-    SPRING_DATASOURCE_URL: `jdbc:postgresql://127.0.0.1:${port}/catalog`,
-    SPRING_DATASOURCE_USERNAME: "catalog", SPRING_DATASOURCE_PASSWORD: password,
-  }, "backend.log");
+    DB_URL: `jdbc:postgresql://127.0.0.1:${port}/catalog`, DB_USER: "catalog", DB_PASSWORD: password,
+  };
+  const api = start("./mvnw", ["--batch-mode", "--no-transfer-progress", "spring-boot:run"], backend, backendEnv, "backend.log");
   backendProcess = api;
   console.log(`Backend fixado em ${commit}; aguardando API real…`);
   await ready("http://127.0.0.1:8081/api/categorias", api, 600000);
@@ -128,11 +129,31 @@ try {
   const testEnv = { SMOKE_BASE_URL: "http://127.0.0.1:3100", CATALOG_DISPOSABLE: "1", INVENTORY_FIXTURE: JSON.stringify(inventory), SALES_FIXTURE: JSON.stringify(sales), PURCHASES_FIXTURE: JSON.stringify(purchases) };
   await run("npm", ["run", "test:live"], root, testEnv);
   await run("npx", ["playwright", "test", "--config=playwright.live.config.ts"], root, testEnv);
-  console.log("Integração real concluída: smoke e Chromium desktop/mobile.");
+  // A real process restart must retain operational receipts, stock, quantities and movements.
+  const snapshot = async () => Object.fromEntries(await Promise.all(["recebimentos-compras", "compras", "estoques", "movimentacoes-estoque"].map(async resource => {
+    const rows = await (await fetch(`http://127.0.0.1:8081/api/${resource}`)).json();
+    if (resource === "recebimentos-compras") for (let i=0; i<rows.length; i++) rows[i] = await (await fetch(`http://127.0.0.1:8081/api/${resource}/${rows[i].id}`)).json();
+    return [resource, rows.sort((a,b) => a.id.localeCompare(b.id))];
+  })));
+  const beforeRestart = await snapshot();
+  assert(beforeRestart["recebimentos-compras"].some(r => r.status === "CONCLUIDO"), "Receiving browser tests must persist confirmed receipts");
+  await stop(api); children.delete(api);
+  backendProcess = start("./mvnw", ["--batch-mode", "--no-transfer-progress", "spring-boot:run"], backend, backendEnv, "backend-restart.log");
+  await ready("http://127.0.0.1:8081/api/categorias", backendProcess, 600000);
+  assert.deepEqual(await snapshot(), beforeRestart, "Backend restart must retain all operational data");
+  console.log("Integração real concluída: smoke, Chromium desktop/mobile e persistência após reiniciar o backend.");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
 } finally {
+  if (purchasesFixture && salesFixture) {
+    try {
+      // Only receipts of the runner's known supplier fixtures; remove them before the operator.
+      const suppliers = (await (await fetch("http://127.0.0.1:8081/api/fornecedores")).json()).filter(s => s.nomeFantasia?.startsWith("stage3-"));
+      const ids = suppliers.map(s => { assert.match(s.id,/^[0-9a-f-]{36}$/i); return `'${s.id}'`; });
+      if (ids.length) await run("docker", ["exec", container, "psql", "-U", "catalog", "-d", "catalog", "-v", "ON_ERROR_STOP=1", "-c", `BEGIN; DELETE FROM movimentacao_estoque WHERE id_item_recebimento_compra IN (SELECT i.id FROM item_recebimento_compra i JOIN recebimento_compra r ON r.id=i.id_recebimento_compra JOIN compra c ON c.id=r.id_compra WHERE c.id_fornecedor IN (${ids})); DELETE FROM item_recebimento_compra WHERE id_recebimento_compra IN (SELECT r.id FROM recebimento_compra r JOIN compra c ON c.id=r.id_compra WHERE c.id_fornecedor IN (${ids})); DELETE FROM recebimento_compra WHERE id_compra IN (SELECT id FROM compra WHERE id_fornecedor IN (${ids})); COMMIT;`], root, {}, "receipts-cleanup.log");
+    } catch(error) { process.exitCode=1; console.error(`Falha na limpeza de recebimentos: ${error.message}`); }
+  }
   if (salesFixture) {
     try { await salesFixture.cleanup(); }
     catch (error) { process.exitCode = 1; console.error(`Falha na limpeza de vendas: ${error.message}`); }

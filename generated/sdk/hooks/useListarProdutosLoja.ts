@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ListarProdutosLojaOptions, ListarProdutosLojaStatus200 } from '../types/ListarProdutosLoja'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { QueryKey, QueryClient, QueryObserverOptions, UseQueryResult } from '@tanstack/react-query'
 import { listarProdutosLoja } from '../clients/listarProdutosLoja'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 export const listarProdutosLojaQueryKey = ({ query }: Omit<ListarProdutosLojaOptions, 'headers'> = {}) => [{ url: '/api/produtos-loja' }, ...(query ? [query] : [])] as const
 

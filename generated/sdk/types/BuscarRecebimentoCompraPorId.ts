@@ -3,6 +3,7 @@
 * Do not edit manually.
 */
 
+import type { ApiError } from './ApiError'
 import type { RecebimentoCompraResponseDTO } from './RecebimentoCompraResponseDTO'
 
 export type BuscarRecebimentoCompraPorIdPath = {
@@ -16,6 +17,12 @@ export type BuscarRecebimentoCompraPorIdPath = {
 
 export type BuscarRecebimentoCompraPorIdStatus200 = RecebimentoCompraResponseDTO;
 
+export type BuscarRecebimentoCompraPorIdStatus400 = ApiError;
+
+export type BuscarRecebimentoCompraPorIdStatus404 = ApiError;
+
+export type BuscarRecebimentoCompraPorIdStatus409 = ApiError;
+
 export type BuscarRecebimentoCompraPorIdOptions = {
   body?: never;
   path: BuscarRecebimentoCompraPorIdPath;
@@ -25,6 +32,9 @@ export type BuscarRecebimentoCompraPorIdOptions = {
 
 export type BuscarRecebimentoCompraPorIdResponses = {
   '200': BuscarRecebimentoCompraPorIdStatus200;
+  '400': BuscarRecebimentoCompraPorIdStatus400;
+  '404': BuscarRecebimentoCompraPorIdStatus404;
+  '409': BuscarRecebimentoCompraPorIdStatus409;
 };
 
 /**

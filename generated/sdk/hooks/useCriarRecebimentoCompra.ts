@@ -3,20 +3,20 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
-import type { CriarRecebimentoCompraOptions, CriarRecebimentoCompraStatus200 } from '../types/CriarRecebimentoCompra'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { CriarRecebimentoCompraOptions, CriarRecebimentoCompraStatus201, CriarRecebimentoCompraStatus400, CriarRecebimentoCompraStatus404, CriarRecebimentoCompraStatus409 } from '../types/CriarRecebimentoCompra'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { criarRecebimentoCompra } from '../clients/criarRecebimentoCompra'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const criarRecebimentoCompraMutationKey = () => [{ url: '/api/recebimentos-compras' }] as const
 
 export function criarRecebimentoCompraMutationOptions<TContext = unknown>(config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
   const mutationKey = criarRecebimentoCompraMutationKey()
-  return mutationOptions<CriarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, CriarRecebimentoCompraOptions, TContext>({
+  return mutationOptions<CriarRecebimentoCompraStatus201, ResponseErrorConfig<CriarRecebimentoCompraStatus400 | CriarRecebimentoCompraStatus404 | CriarRecebimentoCompraStatus409>, CriarRecebimentoCompraOptions, TContext>({
     mutationKey,
-    mutationFn: async({ body }) => {
-      return criarRecebimentoCompra({ ...config, body, throwOnError: true }).unwrap()
+    mutationFn: async({ body, headers }) => {
+      return criarRecebimentoCompra({ ...config, body, headers, throwOnError: true }).unwrap()
     },
   })
 }
@@ -25,18 +25,18 @@ export function criarRecebimentoCompraMutationOptions<TContext = unknown>(config
  * {@link /api/recebimentos-compras}
  */
 export function useCriarRecebimentoCompra<TContext>(options: {
-  mutation?: UseMutationOptions<CriarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, CriarRecebimentoCompraOptions, TContext> & { client?: QueryClient },
+  mutation?: UseMutationOptions<CriarRecebimentoCompraStatus201, ResponseErrorConfig<CriarRecebimentoCompraStatus400 | CriarRecebimentoCompraStatus404 | CriarRecebimentoCompraStatus409>, CriarRecebimentoCompraOptions, TContext> & { client?: QueryClient },
   client?: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>>,
 } = {}) {
   const { mutation = {}, client: config = {} } = options ?? {}
   const { client: queryClient, ...mutationOptions } = mutation;
   const mutationKey = mutationOptions.mutationKey ?? criarRecebimentoCompraMutationKey()
 
-  const baseOptions = criarRecebimentoCompraMutationOptions(config) as UseMutationOptions<CriarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, CriarRecebimentoCompraOptions, TContext>
+  const baseOptions = criarRecebimentoCompraMutationOptions(config) as UseMutationOptions<CriarRecebimentoCompraStatus201, ResponseErrorConfig<CriarRecebimentoCompraStatus400 | CriarRecebimentoCompraStatus404 | CriarRecebimentoCompraStatus409>, CriarRecebimentoCompraOptions, TContext>
 
-  return useMutation<CriarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, CriarRecebimentoCompraOptions, TContext>({
+  return useMutation<CriarRecebimentoCompraStatus201, ResponseErrorConfig<CriarRecebimentoCompraStatus400 | CriarRecebimentoCompraStatus404 | CriarRecebimentoCompraStatus409>, CriarRecebimentoCompraOptions, TContext>({
     ...baseOptions,
     mutationKey,
     ...mutationOptions,
-  }, queryClient) as UseMutationResult<CriarRecebimentoCompraStatus200, ResponseErrorConfig<Error>, CriarRecebimentoCompraOptions, TContext>
+  }, queryClient) as UseMutationResult<CriarRecebimentoCompraStatus201, ResponseErrorConfig<CriarRecebimentoCompraStatus400 | CriarRecebimentoCompraStatus404 | CriarRecebimentoCompraStatus409>, CriarRecebimentoCompraOptions, TContext>
 }

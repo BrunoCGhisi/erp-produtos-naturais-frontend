@@ -3,11 +3,11 @@
 * Do not edit manually.
 */
 
-import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
 import type { ExcluirDevolucaoFornecedorOptions, ExcluirDevolucaoFornecedorStatus204 } from '../types/ExcluirDevolucaoFornecedor'
-import { mutationOptions, useMutation } from '@tanstack/react-query'
+import type { UseMutationOptions, UseMutationResult, QueryClient } from '@tanstack/react-query'
 import { excluirDevolucaoFornecedor } from '../clients/excluirDevolucaoFornecedor'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 
 export const excluirDevolucaoFornecedorMutationKey = () => [{ url: '/api/devolucoes-fornecedores/:id' }] as const
 

@@ -3,6 +3,8 @@
 * Do not edit manually.
 */
 
+import type { ItemRecebimentoResponseDTO } from './ItemRecebimentoResponseDTO'
+
 export const recebimentoCompraResponseDTOStatusEnum = {
   RASCUNHO: 'RASCUNHO',
   CONCLUIDO: 'CONCLUIDO',
@@ -40,4 +42,17 @@ export type RecebimentoCompraResponseDTO = {
    */
   dataRecebimento?: string;
   observacao?: string;
+  /**
+   * @description
+   * Format: `int32`
+   * @type integer | undefined
+   */
+  versao?: number;
+  /**
+   * @description
+   * Format: `date-time`
+   * @type string | undefined
+   */
+  concluidoEm?: string;
+  itens?: ItemRecebimentoResponseDTO[];
 };
