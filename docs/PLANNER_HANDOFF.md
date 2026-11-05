@@ -185,4 +185,12 @@ A última execução real foi concluída com código 0; o build contém as cinco
 
 As primeiras execuções detectaram seletores de testes ambíguos e a expectativa incorreta de HTTP 500 na exclusão; foram corrigidos para os nomes acessíveis exatos, escopos de diálogo/main e HTTP 409 confirmado no backend. Os testes não ocultam o defeito de integridade; ele permanece registrado em BG-005. A revisão final acrescentou testes de status atualizado por query e falha de refresh sem descartar formulário.
 
-SDK, package.json e lockfile sem alterações. O application.properties previamente modificado do checkout de backend foi preservado; a integração usa checkout próprio. Checks remotos de CI não foram executados nesta sessão. Nenhum deploy, merge ou publicação remota nesta etapa.
+SDK, package.json e lockfile sem alterações. O application.properties previamente modificado do checkout de backend foi preservado; a integração usa checkout próprio. A situação da CI após o push não foi consultada nesta sessão. Não houve deploy ou merge. Os commits enviados e os ajustes posteriores estão registrados abaixo.
+
+### Ajustes finais de navegação e envio
+
+- [`876122f`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/commit/876122f): implementação da etapa 3 e evidências completas acima.
+- [`4c3b414`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/commit/4c3b414): sidebar com logo fixo e rolagem somente a partir de Catálogo, incluindo os grupos Compras/Estoque e o rodapé lateral. A barra fica junto à borda direita, com espaçamento entre os itens e a barra; o espaçamento esquerdo foi preservado.
+- Catálogo, Compras e Estoque nos breadcrumbs agora são texto, sem links para as primeiras páginas das seções. A navegação pela sidebar permanece disponível.
+- Validação desses ajustes: ESLint dos arquivos alterados, `git diff --check` e os dois cenários de navegação/breadcrumbs em desktop/mobile passaram. Comando direcionado: `npx playwright test e2e/purchases.spec.ts -g 'navegação de compras'`. A suíte completa e a integração real da tabela acima foram executadas antes destes ajustes visuais.
+- Ambos os commits foram enviados a `origin/feat/catalog`; o push avançou a branch remota de `6f77647` para `4c3b414`. A atualização deste registro segue em commit de documentação.
