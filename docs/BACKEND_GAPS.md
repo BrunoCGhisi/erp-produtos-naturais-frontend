@@ -22,6 +22,12 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 | [BG-012](#bg-012) | Capacidade ausente | Precedência de preços sobrepostos indefinida |
 | [BG-013](#bg-013) | Capacidade ausente | Listas sem paginação de servidor |
 | [BG-014](#bg-014) | Inconsistência de contrato | Precisão e desconto não validados no DTO de compra |
+| [BG-015](#bg-015) | Inconsistência de contrato | Cliente e operador opcionais no request, obrigatórios na entidade |
+| [BG-016](#bg-016) | Inconsistência de contrato | Observação de venda não retorna na consulta |
+| [BG-017](#bg-017) | Defeito | Atualização e exclusão de vendas sem guardas de status |
+| [BG-018](#bg-018) | Inconsistência de contrato | Validação monetária e de precisão insuficiente nos itens de venda |
+| [BG-019](#bg-019) | Inconsistência de contrato | Resposta de item omite total persistido e unidade histórica |
+| [BG-020](#bg-020) | Defeito | Senha recebida atribuída diretamente a senhaHash |
 
 <a id="bg-001"></a>
 ## BG-001 — Funções de conclusão de estoque sem migração versionada
@@ -122,7 +128,7 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Situação:** Confirmado no serviço; triggers externos não verificados.
 - **Fonte:** [VendaService.aplicarCabecalho / criar / atualizar](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/VendaService.java).
 - **Comportamento observado:** O serviço calcula valores e mantém venda ABERTA, sem operação de checkout, transições ou baixa de estoque.
-- **Impacto/contorno no frontend:** Vendas permanecem fora desta etapa.
+- **Impacto/contorno no frontend:** Etapa 4 permite criar venda ABERTA e consultar registros em qualquer status, somente leitura após salvar. Não expõe checkout, edição, cancelamento, exclusão ou baixa. A suíte descartável confirma estoque inalterado na criação.
 - **Correção solicitada:** Implementar fechamento/cancelamento transacionais com baixa/estorno e idempotência.
 - **Aceite testável:** Fechar venda baixa estoque exatamente uma vez, bloqueia edição indevida e cancelamento segue política explícita com estorno testado.
 - **Commit de correção:** pendente.
@@ -134,8 +140,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
 - **Situação:** Confirmado por inspeção; esta etapa não reproduziu todos os parâmetros por HTTP.
 - **Fonte:** [MovimentacaoEstoqueService.listar / ProdutoSkuService.listar / ProdutoLojaService.listar / ProdutoPrecoLojaService.listar](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/MovimentacaoEstoqueService.java).
-- **Comportamento observado:** Movimentações e preços filtram somente quando produto e loja são informados juntos; SKU ignora idLoja; vínculo prioriza produto e ignora loja quando ambos são informados.
-- **Impacto/contorno no frontend:** Frontend filtra IDs localmente; SKU continua global por produto. Não introduzir regra de vínculo para comprar.
+- **Comportamento observado:** Movimentações e preços filtram somente quando produto e loja são informados juntos; SKU ignora idLoja; vínculo prioriza produto e ignora loja quando ambos são informados. VendaService.listar prioriza cliente, depois usuário, depois loja, sem conjunção. [Fonte de vendas](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/VendaService.java), confirmado por inspeção; combinação de vendas não reproduzida por HTTP real.
+- **Impacto/contorno no frontend:** Frontend filtra IDs localmente; SKU continua global por produto. Vendas envia cliente/loja à API e reaplica ambos localmente, além de status e intervalo inclusivo no fuso de São Paulo. Não introduzir regra de vínculo para comprar ou vender.
 - **Correção solicitada:** Aplicar todos os filtros fornecidos por conjunção, ou retirar parâmetros sem significado do contrato.
 - **Aceite testável:** Para cada recurso, testar nenhum filtro, cada filtro individual e ambos, inclusive combinação sem resultados. O retorno contém somente registros correspondentes.
 - **Commit de correção:** pendente.
@@ -203,4 +209,82 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Impacto/contorno no frontend:** Validação local com inteiros escalados rejeita casas extras, limites e desconto acima do bruto sem arredondar. Outros clientes podem contornar isso.
 - **Correção solicitada:** Adicionar validação de precisão e desconto no servidor antes de persistir, mantendo HALF_UP por item e limite da soma.
 - **Aceite testável:** Casas/dígitos extras, desconto maior que bruto e soma fora do limite retornam 4xx sem gravação; limites válidos recarregam com totais iguais ao cálculo documentado.
+- **Commit de correção:** pendente.
+
+<a id="bg-015"></a>
+## BG-015 — Cliente e operador opcionais no request, obrigatórios na entidade
+
+- **Tipo:** Inconsistência de contrato.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção e probes descartáveis descritos abaixo (`scripts/sales-seed.mjs`).
+- **Fonte:** [VendaRequestDTO](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/dto/venda/VendaRequestDTO.java).
+- **Comportamento observado:** Request permite IDs nulos e serviço os aplica; [Venda.cliente e usuario](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/entity/Venda.java) exige @NotNull. Envio sem ambos reproduziu HTTP 500 no banco descartável.
+- **Impacto/contorno no frontend:** Form exige os dois IDs e seleção explícita de operador.
+- **Correção solicitada:** Adicionar @NotNull aos IDs no DTO, mantendo contrato OpenAPI consistente.
+- **Aceite testável:** Omitir cada ID individualmente retorna 400 com mensagem de campo; payload válido cria ABERTA.
+- **Commit de correção:** pendente.
+
+<a id="bg-016"></a>
+## BG-016 — Observação de venda não retorna na consulta
+
+- **Tipo:** Inconsistência de contrato.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção e probes descartáveis descritos abaixo (`scripts/sales-seed.mjs`).
+- **Fonte:** [VendaResponseDTO.fromEntity](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/dto/venda/VendaResponseDTO.java).
+- **Comportamento observado:** Observação é aceita e gravada, mas não é devolvida. Probe enviou observação e confirmou sua ausência no POST/GET.
+- **Impacto/contorno no frontend:** Sem input de observação e sem edição integral após salvar.
+- **Correção solicitada:** Retornar observacao no DTO de resposta.
+- **Aceite testável:** POST com observação seguido de GET preserva e retorna o texto.
+- **Commit de correção:** pendente.
+
+<a id="bg-017"></a>
+## BG-017 — Atualização e exclusão de vendas sem guardas de status
+
+- **Tipo:** Defeito.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção e probes descartáveis descritos abaixo (`scripts/sales-seed.mjs`).
+- **Fonte:** [VendaService.atualizar / excluir](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/VendaService.java).
+- **Comportamento observado:** Serviço não verifica status. Probe alterou status para CONCLUIDA por SQL exclusivo de teste: PUT e DELETE upstream foram aceitos (200/204).
+- **Impacto/contorno no frontend:** Proxy bloqueia PUT/DELETE de vendas; detalhe sempre somente leitura.
+- **Correção solicitada:** Definir política de imutabilidade por status e validá-la em transação.
+- **Aceite testável:** PUT/DELETE de venda concluída/cancelada são rejeitados com erro de negócio, sem modificar itens/cabeçalho.
+- **Commit de correção:** pendente.
+
+<a id="bg-018"></a>
+## BG-018 — Validação monetária e de precisão insuficiente nos itens de venda
+
+- **Tipo:** Inconsistência de contrato.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção e probes descartáveis descritos abaixo (`scripts/sales-seed.mjs`).
+- **Fonte:** [ProdutoVendaRequestDTO / ProdutoVenda](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/dto/venda/ProdutoVendaRequestDTO.java).
+- **Comportamento observado:** DTO só impõe mínimo de quantidade e presença de preço. Não há mínimo de preço/desconto, @Digits ou comparação desconto/bruto. Probe com preço -1 foi aceito e retornou total -1. Precisão excessiva e outros valores inválidos não foram reproduzidos por HTTP.
+- **Impacto/contorno no frontend:** BigInt em escalas 3/2/2, limites numeric(14,3), numeric(12,2), numeric(14,2), desconto limitado ao bruto não arredondado; HALF_UP agregado.
+- **Correção solicitada:** Validar escalas, limites, mínimos e desconto <= bruto também no backend.
+- **Aceite testável:** Valores negativos, escala excedida, overflow e desconto acima do bruto retornam 400 e não persistem; limites válidos têm totais consistentes.
+- **Commit de correção:** pendente.
+
+<a id="bg-019"></a>
+## BG-019 — Resposta de item omite total persistido e unidade histórica
+
+- **Tipo:** Inconsistência de contrato.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção e probes descartáveis descritos abaixo (`scripts/sales-seed.mjs`).
+- **Fonte:** [ProdutoVendaResponseDTO.fromEntity](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/dto/venda/ProdutoVendaResponseDTO.java).
+- **Comportamento observado:** [ProdutoVenda](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/entity/ProdutoVenda.java) persiste totalItem e unidadeSiglaSnapshot, DTO omite ambos. Ausência confirmada no retorno real.
+- **Impacto/contorno no frontend:** Detalhe usa totais de cabeçalho autoritativos e identifica unidade atual como lookup do catálogo. Não apresenta cálculo como total persistido do item.
+- **Correção solicitada:** Incluir totalItem e unidadeSiglaSnapshot nas respostas.
+- **Aceite testável:** GET devolve total HALF_UP e unidade histórica mesmo após mudar a unidade do catálogo.
+- **Commit de correção:** pendente.
+
+<a id="bg-020"></a>
+## BG-020 — Senha recebida atribuída diretamente a senhaHash
+
+- **Tipo:** Defeito.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção.
+- **Fonte:** [UsuarioService.criar / atualizar](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/UsuarioService.java).
+- **Comportamento observado:** Ambos os métodos chamam setSenhaHash(dto.senha()), sem hashing no serviço inspecionado. Confirmado por inspeção; conteúdo de senha persistida não foi consultado nem registrado.
+- **Impacto/contorno no frontend:** Sem gestão de usuários ou autenticação. Operador descartável é criado somente por teste upstream com segredo aleatório.
+- **Correção solicitada:** Aplicar hash de senha adequado e política consistente de criação/atualização, com tratamento seguro de credenciais.
+- **Aceite testável:** Teste de serviço comprova hash verificável diferente da senha recebida; resposta/log não expõe senha nem hash.
 - **Commit de correção:** pendente.

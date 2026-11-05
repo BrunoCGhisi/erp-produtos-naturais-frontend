@@ -40,7 +40,7 @@ it("preserva resposta vazia 204", async () => {
   expect(await result.text()).toBe("");
 });
 it.each([
-  ["usuarios"],
+  ["usuarios", "invalid"],
   ["produtos", ".."],
   ["produtos", "11111111-1111-4111-8111-111111111111", "extra"],
 ])("bloqueia caminhos fora do catálogo: %s", async (...path) => {
@@ -197,4 +197,58 @@ it("bloqueia exclusão, transições e recebimentos de compras sem consultar ups
       ).status,
     ).toBe(404);
   expect(fetch).not.toHaveBeenCalled();
+});
+it.each([
+  ["clientes", "GET", false],
+  ["clientes", "POST", false],
+  ["clientes", "GET", true],
+  ["clientes", "PUT", true],
+  ["clientes", "DELETE", true],
+  ["vendas", "GET", false],
+  ["vendas", "POST", false],
+  ["vendas", "GET", true],
+  ["usuarios", "GET", false],
+])("etapa 4 permite %s %s uuid=%s", async (resource, method, record) => {
+  const fetch = vi.fn().mockResolvedValue(Response.json({}));
+  vi.stubGlobal("fetch", fetch);
+  const path = record ? [resource, inventoryId] : [resource];
+  expect(
+    (
+      await forwardCatalog(
+        new Request(`http://localhost/api/${path.join("/")}`, { method }),
+        path,
+      )
+    ).status,
+  ).toBe(200);
+  expect(fetch).toHaveBeenCalledOnce();
+});
+it.each([
+  ["vendas", "PUT"],
+  ["vendas", "DELETE"],
+  ["usuarios", "POST"],
+  ["usuarios", "PUT"],
+  ["usuarios", "DELETE"],
+])("etapa 4 bloqueia %s %s", async (resource, method) => {
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  const path = resource === "vendas" ? [resource, inventoryId] : [resource];
+  expect(
+    (
+      await forwardCatalog(
+        new Request("http://localhost/api/", { method }),
+        path,
+      )
+    ).status,
+  ).toBe(405);
+  expect(fetch).not.toHaveBeenCalled();
+});
+it.each([
+  ["vendas", "invalido"],
+  ["vendas", inventoryId, "concluir"],
+  ["clientes", "x"],
+  ["usuarios", inventoryId],
+])("etapa 4 bloqueia caminho %s", async (...path) => {
+  expect(
+    (await forwardCatalog(new Request("http://localhost/api/"), path)).status,
+  ).toBe(404);
 });

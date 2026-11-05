@@ -1,4 +1,7 @@
 const resources = new Set([
+  "clientes",
+  "vendas",
+  "usuarios",
   "fornecedores",
   "compras",
   "estoques",
@@ -19,6 +22,7 @@ export async function forwardCatalog(request: Request, path: string[]) {
   const balance = resource === "estoques" && id === "saldo";
   if (
     !resources.has(resource) ||
+    (resource === "usuarios" && path.length !== 1) ||
     path.length > 2 ||
     (id && !balance && !uuid.test(id))
   )
@@ -26,15 +30,22 @@ export async function forwardCatalog(request: Request, path: string[]) {
       { message: "Recurso não encontrado." },
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
-  const allowed = inventory
-    ? ["GET"]
-    : id
-      ? resource === "produtos-loja"
-        ? ["GET", "DELETE"]
-        : resource === "compras"
-          ? ["GET", "PUT"]
-          : ["GET", "PUT", "DELETE"]
-      : ["GET", "POST"];
+  const allowed =
+    resource === "usuarios"
+      ? ["GET"]
+      : resource === "vendas"
+        ? id
+          ? ["GET"]
+          : ["GET", "POST"]
+        : inventory
+          ? ["GET"]
+          : id
+            ? resource === "produtos-loja"
+              ? ["GET", "DELETE"]
+              : resource === "compras"
+                ? ["GET", "PUT"]
+                : ["GET", "PUT", "DELETE"]
+            : ["GET", "POST"];
   if (!allowed.includes(request.method))
     return Response.json(
       { message: "Método não permitido." },

@@ -22,7 +22,14 @@ it("reconsulta listas, detalhe e relacionamentos ativos após uma mutação", as
       queryFn: relations,
     }),
   ];
-  for (const url of ["/api/fornecedores", "/api/compras", "/api/compras/:id"])
+  for (const url of [
+    "/api/fornecedores",
+    "/api/compras",
+    "/api/compras/:id",
+    "/api/clientes",
+    "/api/vendas",
+    "/api/vendas/:id",
+  ])
     observers.push(
       new QueryObserver(client, { queryKey: [{ url }], queryFn: relations }),
     );
@@ -33,7 +40,7 @@ it("reconsulta listas, detalhe e relacionamentos ativos após uma mutação", as
   await refreshCatalog(client);
   expect(list).toHaveBeenCalledTimes(2);
   expect(detail).toHaveBeenCalledTimes(2);
-  expect(relations).toHaveBeenCalledTimes(8);
+  expect(relations).toHaveBeenCalledTimes(14);
   expect(observers[0].getCurrentResult().data).toEqual([
     { nome: "Atualizado" },
   ]);

@@ -194,3 +194,33 @@ SDK, package.json e lockfile sem alterações. O application.properties previame
 - Catálogo, Compras e Estoque nos breadcrumbs agora são texto, sem links para as primeiras páginas das seções. A navegação pela sidebar permanece disponível.
 - Validação desses ajustes: ESLint dos arquivos alterados, `git diff --check` e os dois cenários de navegação/breadcrumbs em desktop/mobile passaram. Comando direcionado: `npx playwright test e2e/purchases.spec.ts -g 'navegação de compras'`. A suíte completa e a integração real da tabela acima foram executadas antes destes ajustes visuais.
 - Ambos os commits foram enviados a `origin/feat/catalog`; o push avançou a branch remota de `6f77647` para `4c3b414`. A atualização deste registro segue em commit de documentação.
+
+## Etapa 4 — clientes e vendas abertas
+
+Implementadas `/clientes`, `/vendas`, `/vendas/nova` e `/vendas/[id]`, com grupo Vendas (Registros/Clientes), mantendo marca fixa, navegação rolável e breadcrumbs de seção sem links. Clientes reutilizam tabelas, modais, confirmação de exclusão e erros do backend. Datas de nascimento permanecem strings civis; CPF/nascimento são opcionais. Vendas listam data, cliente, operador, loja, status e total salvo, com filtros locais e suportados pela API, ordenação e paginação de 20 linhas na URL.
+
+Preparação exige seleções explícitas de cliente/loja/operador e ao menos um item. Operador é responsabilidade na demonstração, sem autenticação nem gestão de usuários. Preço manual, sem vínculo/saldo/validade automáticos. Validação usa BigInt e escalas 3/2/2, incluindo numeric(12,2) do preço e numeric(14,s) dos demais valores. HALF_UP arredonda a soma dos brutos; a UI explica diferenças em relação à soma das prévias de itens. Data opcional usa São Paulo e é omitida em branco; status e observação não são enviados.
+
+Após salvar, detalhe somente leitura usa subtotal/desconto/total retornados pelo backend, identifica unidade do catálogo como atual e explica snapshots/totais de item ausentes. Nenhuma mutação após criação, checkout, pagamento ou baixa de estoque foi adicionada. Proxy permite clientes GET/POST e GET/PUT/DELETE UUID, vendas GET/POST e GET UUID, usuários somente GET de coleção; rejeita ações extras. SDK, dependências e backend preservados.
+
+Fontes: [sales.ts](../lib/sales.ts), [sales.tsx](../components/sales.tsx), [support-list.tsx](../components/support-list.tsx). Testes: `tests/sales*.test.*`, proxy/queries, `e2e/sales.spec.ts`, `e2e-live/sales.spec.ts` e `scripts/sales-seed.mjs`. A limpeza remove vendas antes de clientes e operador; o runner mantém propriedade exclusiva dos processos/container e limpa em falha. Os jobs CI existentes descobrem essas suítes sem alteração do workflow.
+
+[BACKEND_GAPS.md](BACKEND_GAPS.md) mantém IDs anteriores, amplia BG-008/BG-009 e registra BG-015 a BG-020 com commit, links, impacto e aceite. Probes reais: ausência conjunta de cliente/operador retorna 500; preço negativo é aceito; PUT e DELETE de CONCLUIDA são aceitos; respostas omitem observação e campos persistidos de itens. Hash de senha e precedência de filtros foram confirmados por inspeção, sem atribuir-lhes reprodução não feita. Não há contorno de backend no código da aplicação.
+
+### Evidências finais da etapa 4 — 05/11/2026
+
+Validação sobre o código final, Node 24 e backend fixado em `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`:
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run lint` | Passou, sem erros/avisos ESLint |
+| `npm run typecheck` | Passou |
+| `npm test` | 119 testes em 12 arquivos passaram |
+| `npm run test:e2e` | 50 cenários desktop/mobile passaram |
+| `npm run test:integration` | Passou: build de produção isolado, smoke e 8 cenários reais desktop/mobile |
+| Limpeza | 3 vendas, 3 clientes e operador temporário removidos antes das compras/estoque/catálogo; processos e container próprios removidos |
+| `git diff --check` | Passou |
+
+Logs finais temporários em `integration-artifacts/`, incluindo build com as quatro rotas novas e `database-cleanup.log`. Não há containers `vila-integration-*` restantes. As primeiras execuções detectaram seletores ambíguos de alerta/total nos testes; foram corrigidos com escopos de diálogo/main e expressão ancorada. Na revisão final foi corrigido o título da coluna CLIENTE; todas as suítes e integração foram repetidas depois desse ajuste. Os probes negativos retornam os resultados documentados, sem correções de backend.
+
+CI: os jobs `validate` e `integration` do workflow existente incluem automaticamente todos os testes novos. As execuções acima são **locais**, não uma execução da CI remota. Esta etapa não foi enviada ao remoto; não há URL de CI nova para este commit. Nenhum deploy ou merge foi realizado.

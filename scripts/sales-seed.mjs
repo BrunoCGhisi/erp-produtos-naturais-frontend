@@ -1,0 +1,100 @@
+// Disposable-only upstream probes. Never imported by application code.
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+export function salesSeed({ base, inventory, sql }) {
+  const prefix = `stage4-${randomUUID().slice(0, 8)}`;
+  let operator;
+  async function api(resource, method = "GET", body) {
+    const response = await fetch(`${base}/api/${resource}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body && JSON.stringify(body),
+    });
+    assert(
+      response.ok,
+      `${method} ${resource}: ${response.status} ${response.ok ? "" : await response.text()}`,
+    );
+    return response.status === 204 ? undefined : response.json();
+  }
+  return {
+    async seed() {
+      operator = await api("usuarios", "POST", {
+        nome: prefix,
+        email: `${prefix}@example.test`,
+        senha: randomUUID(),
+        cargo: "FUNCIONARIO",
+      });
+      const customer = await api("clientes", "POST", {
+        nome: prefix,
+        dataNascimento: "2000-02-29",
+      });
+      const before = await api("estoques");
+      const body = {
+        idCliente: customer.id,
+        idUsuario: operator.id,
+        idLoja: inventory.store,
+        observacao: "probe",
+        itens: [inventory.product, inventory.otherProduct].map((idProduto) => ({
+          idProduto,
+          quantidade: 0.001,
+          precoUnitario: 5,
+          desconto: 0,
+        })),
+      };
+      const saved = await api("vendas", "POST", body);
+      assert.equal(saved.status, "ABERTA");
+      assert.equal(saved.subtotal, 0.01);
+      assert.equal(saved.valorTotal, 0.01);
+      assert(!("observacao" in saved));
+      assert(!("totalItem" in saved.itens[0]));
+      assert(!("unidadeSiglaSnapshot" in saved.itens[0]));
+      assert.equal((await api(`vendas/${saved.id}`)).valorTotal, 0.01);
+      assert.deepEqual(await api("estoques"), before);
+      const missing = await fetch(`${base}/api/vendas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...body,
+          idCliente: undefined,
+          idUsuario: undefined,
+        }),
+      });
+      assert.equal(missing.status, 500);
+      await missing.text();
+      const negative = await api("vendas", "POST", {
+        ...body,
+        itens: [
+          { ...body.itens[0], quantidade: 1, precoUnitario: -1, desconto: 0 },
+        ],
+      });
+      assert.equal(negative.valorTotal, -1);
+      // Status probes are test-only; product UI remains read-only.
+      await sql(
+        `UPDATE venda SET status = 'CONCLUIDA' WHERE id = '${negative.id}'`,
+      );
+      const updated = await api(`vendas/${negative.id}`, "PUT", body);
+      assert.equal(updated.status, "CONCLUIDA");
+      await api(`vendas/${negative.id}`, "DELETE");
+      console.log(
+        "Vendas: subtotal agregado 0,01, ausência de snapshots/observação, estoque inalterado; IDs ausentes HTTP 500; preço negativo aceito; PUT/DELETE de CONCLUIDA aceitos.",
+      );
+      return { ...inventory, prefix, operator: operator.id };
+    },
+    async cleanup() {
+      const customers = (await api("clientes")).filter((c) =>
+        c.nome?.startsWith(prefix),
+      );
+      const ids = new Set(customers.map((c) => c.id));
+      const sales = (await api("vendas")).filter(
+        (v) => ids.has(v.idCliente) || v.idUsuario === operator?.id,
+      );
+      for (const sale of sales) await api(`vendas/${sale.id}`, "DELETE");
+      for (const customer of customers)
+        await api(`clientes/${customer.id}`, "DELETE");
+      if (operator) await api(`usuarios/${operator.id}`, "DELETE");
+      console.log(
+        `Limpeza vendas: ${sales.length} vendas, ${customers.length} clientes e operador removidos.`,
+      );
+    },
+  };
+}

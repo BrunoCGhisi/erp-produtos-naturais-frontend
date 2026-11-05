@@ -128,3 +128,17 @@ Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://githu
 `npm run test:integration` também exercita fornecedores/compras com backend e PostgreSQL descartáveis, valida totais persistidos, substituição de itens e estoque inalterado, e reproduz [BG-005](docs/BACKEND_GAPS.md#bg-005). A limpeza remove itens de compra por SQL exclusivamente no container de teste, depois cabeçalhos/fornecedores por API, antes dos pré-requisitos do catálogo. Não há SQL nem exclusão em cascata de compras na aplicação.
 
 Validação local da etapa 3: lint, tipos, 82 testes unitários/de componentes, 42 cenários desktop/mobile, build de produção e seis cenários reais passaram. Os 14 cenários de compras passaram novamente após os ajustes finais. Evidências e detalhes de entrega estão no [handoff](docs/PLANNER_HANDOFF.md#etapa-3--fornecedores-e-rascunhos-de-compras). SDK, backend de referência e dependências permanecem iguais.
+
+### Etapa 4: clientes e vendas abertas
+
+`/clientes` oferece cadastro, busca, ordenação, paginação, edição e exclusão confirmada, com CPF/nascimento opcionais. Nascimento é data civil, sem conversão de fuso. “Ver vendas” abre o filtro por cliente.
+
+`/vendas` lista registros em todos os status com filtros restauráveis na URL (cliente, loja, status e intervalo inclusivo de datas em São Paulo), ordenação e 20 registros por página. `/vendas/nova` exige cliente, loja, operador já existente e itens do catálogo. A seleção de operador registra responsabilidade na demonstração; não autentica ninguém. Sem operadores, a gravação fica bloqueada; a aplicação não oferece gestão de usuários.
+
+Preços são informados manualmente, com até duas casas; quantidades têm até três. Descontos monetários não podem exceder o bruto. A prévia usa inteiros escalados e HALF_UP, arredondando a soma dos brutos antes de descontar; pode diferir da soma das prévias dos itens. Nenhum preço de validade, vínculo com loja ou saldo é escolhido como restrição automática.
+
+Salvar cria ABERTA e abre `/vendas/[id]`, somente leitura, com totais autoritativos do backend. Não conclui checkout ou baixa estoque. Não há edição, cancelamento ou exclusão de vendas. A unidade exibida vem do catálogo atual; a API não devolve o snapshot nem o total persistido dos itens. Não existe campo de observação porque a API não o retorna. Limitações: [BG-008, BG-009 e BG-015 a BG-020](docs/BACKEND_GAPS.md).
+
+A integração descartável agora cria um operador temporário diretamente na API upstream e cria cliente/venda pelo navegador em desktop/mobile, verificando arredondamento agregado, status, reload e estoque inalterado. Probes de falhas e mutações upstream ficam exclusivamente em `scripts/sales-seed.mjs`; vendas são limpas antes de clientes/operadores e do catálogo. `npm run test:integration` executa build isolado, smoke e todas as suítes reais. As suítes novas são descobertas automaticamente pelos jobs existentes de CI.
+
+Validação local final da etapa 4 (05/11/2026): lint, tipos, 119 testes unitários/componentes, 50 cenários Playwright e integração real (build, smoke e 8 cenários desktop/mobile) passaram. Evidências e situação da CI remota no [handoff](docs/PLANNER_HANDOFF.md#etapa-4--clientes-e-vendas-abertas).

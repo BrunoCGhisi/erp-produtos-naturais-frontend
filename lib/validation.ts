@@ -133,3 +133,23 @@ export const supplierSchema = z.object({
   cnpj: z.string().trim().optional(),
   cpf: z.string().trim().optional(),
 });
+
+// Calendar dates remain strings throughout the customer workflow.
+export const customerSchema = z.object({
+  nome: required,
+  cpf: z.string().trim().optional(),
+  dataNascimento: z
+    .string()
+    .optional()
+    .refine(
+      (v) =>
+        !v ||
+        (/^\d{4}-\d{2}-\d{2}$/.test(v) &&
+          Number.isFinite(Date.parse(`${v}T00:00:00Z`)) &&
+          new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v),
+      "Data inválida.",
+    )
+    .transform((v) => v || undefined),
+});
+export const calendarDateLabel = (v?: string) =>
+  v ? v.split("-").reverse().join("/") : "—";

@@ -1,3 +1,7 @@
+import { customerSchema } from "./validation";
+import { criarCliente } from "@/generated/sdk/clients/criarCliente";
+import { atualizarCliente } from "@/generated/sdk/clients/atualizarCliente";
+import { excluirCliente } from "@/generated/sdk/clients/excluirCliente";
 import { criarFornecedor } from "@/generated/sdk/clients/criarFornecedor";
 import { atualizarFornecedor } from "@/generated/sdk/clients/atualizarFornecedor";
 import { excluirFornecedor } from "@/generated/sdk/clients/excluirFornecedor";
@@ -37,7 +41,7 @@ import { atualizarPrecoProdutoLoja } from "@/generated/sdk/clients/atualizarPrec
 export type Field = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "select" | "datetime-local";
+  type?: "text" | "textarea" | "select" | "datetime-local" | "date";
   optional?: boolean;
   hint?: string;
   options?: { value: string; label: string }[];
@@ -53,6 +57,16 @@ const status: Field = {
   ],
 };
 export const fields = {
+  customers: [
+    { name: "nome", label: "Nome" },
+    { name: "cpf", label: "CPF", optional: true },
+    {
+      name: "dataNascimento",
+      label: "Data de nascimento",
+      type: "date",
+      optional: true,
+    },
+  ],
   suppliers: [
     { name: "nomeFantasia", label: "Nome fantasia" },
     { name: "razaoSocial", label: "Razão social" },
@@ -143,6 +157,7 @@ export const resourceNames: Record<
   Resource,
   { url: string; plural: string; singular: string }
 > = {
+  customers: { url: "clientes", plural: "Clientes", singular: "cliente" },
   suppliers: {
     url: "fornecedores",
     plural: "Fornecedores",
@@ -173,6 +188,7 @@ export const resourceNames: Record<
   },
 };
 export const schemas: Record<Resource, z.ZodType> = {
+  customers: customerSchema,
   suppliers: supplierSchema,
   categories: categorySchema,
   units: unitSchema,
@@ -205,6 +221,12 @@ export async function saveRecord(
   id?: string,
 ) {
   switch (resource) {
+    case "customers": {
+      const body = customerSchema.parse(values);
+      return id
+        ? atualizarCliente({ path: { id }, body }).unwrap()
+        : criarCliente({ body }).unwrap();
+    }
     case "suppliers": {
       const body = supplierSchema.parse(values);
       return id
@@ -255,6 +277,8 @@ export async function saveRecord(
 }
 export async function deleteRecord(resource: Resource, id: string) {
   switch (resource) {
+    case "customers":
+      return excluirCliente({ path: { id } }).unwrap();
     case "suppliers":
       return excluirFornecedor({ path: { id } }).unwrap();
     case "categories":
