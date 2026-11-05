@@ -80,7 +80,7 @@ function Navigation({
           href={href}
           aria-current={path.startsWith(href) ? "page" : undefined}
           onClick={onNavigate}
-          className="my-[5px] flex items-center gap-3 rounded-[7px] px-3.5 py-3 font-medium text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:font-[650] aria-[current=page]:text-[#236840]"
+          className="my-[5px] flex items-center gap-3 rounded-[7px] px-3.5 py-3 font-medium text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:text-[#236840]"
         >
           <Icon size={19} />
           {label}
