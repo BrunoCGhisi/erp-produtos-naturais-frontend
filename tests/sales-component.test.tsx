@@ -133,3 +133,25 @@ it("detalhe retém venda concluída quando lookup falha e usa totais autoritativ
     screen.queryByRole("button", { name: /Editar|Excluir|Concluir/ }),
   ).toBeNull();
 });
+
+it("não reenvia venda persistida quando navegação falha depois do refresh", async () => {
+  state.create.mockResolvedValue({ id });
+  state.push.mockImplementationOnce(() => { throw new Error("navigation"); });
+  mount(); fill();
+  fireEvent.click(screen.getByRole("button", { name: "Salvar venda aberta" }));
+  expect(await screen.findByRole("link", { name: "Ver registro salvo" })).toHaveAttribute("href", `/vendas/${id}`);
+  await screen.findByText(/Não foi possível atualizar a tela/);
+  expect(screen.getByRole("button", { name: "Salvar venda aberta" })).toBeDisabled();
+  expect(localStorage.length).toBe(0);
+  expect(state.create).toHaveBeenCalledTimes(1);
+});
+
+it("falha de rede mantém recuperação e orienta consulta à lista sem replay", async () => {
+  state.create.mockRejectedValue(new Error("network"));
+  mount(); fill();
+  fireEvent.click(screen.getByRole("button", { name: "Salvar venda aberta" }));
+  expect(await screen.findByRole("link", { name: "lista de registros" })).toHaveAttribute("href", "/vendas");
+  expect(screen.getByLabelText(/Quantidade/)).toHaveValue("1,125");
+  await waitFor(() => expect(localStorage.length).toBe(1));
+  expect(state.create).toHaveBeenCalledTimes(1);
+});

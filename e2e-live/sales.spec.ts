@@ -45,6 +45,9 @@ test("vendas reais: cliente e venda aberta com total agregado, reload e estoque 
   await fill(1, fixture.product, "0,001", "5", "0");
   await page.getByRole("button", { name: "Adicionar item" }).click();
   await fill(2, fixture.otherProduct, "0,001", "5", "0");
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Restaurar", exact: true }).click();
   await page.getByRole("button", { name: "Salvar venda aberta" }).click();
   await expect(page).toHaveURL(/\/vendas\/[0-9a-f-]{36}$/);
   await page.reload();

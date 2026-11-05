@@ -1,0 +1,30 @@
+import { z } from "zod";
+import type { CompraResponseDTO } from "@/generated/sdk/types/CompraResponseDTO";
+import { draftValues } from "./purchases";
+const text = z.string();
+const item = { idProduto: text, quantidade: text, desconto: text };
+export const purchaseDraftSchema = z.object({
+  idFornecedor: text, idLoja: text, dataCompra: text, observacao: text,
+  itens: z.array(z.object({ ...item, id: text.optional(), custoUnitario: text }).strict()),
+}).strict();
+export const saleDraftSchema = z.object({
+  idCliente: text, idUsuario: text, idLoja: text, dataVenda: text,
+  itens: z.array(z.object({ ...item, precoUnitario: text }).strict()),
+}).strict();
+export const lifetime = 7 * 24 * 60 * 60 * 1000;
+export const recoveryKey = (environment: string, context: string) => `vila:recovery:v1:${environment}:${context}`;
+export function purchaseFingerprint(row: CompraResponseDTO) {
+  return JSON.stringify({ status: row.status, idUsuario: row.idUsuario, ...draftValues(row) });
+}
+export type Recovery<T> = { version: 1; updatedAt: number; revision: string; baseline: string; values: T };
+export function decodeRecovery<T>(raw: string, schema: z.ZodType<T>, now = Date.now()): Recovery<T> {
+  const record = z.object({ version: z.literal(1), updatedAt: z.number().finite(), revision: text,
+    baseline: text, values: schema }).strict().parse(JSON.parse(raw));
+  if (record.updatedAt > now || now - record.updatedAt >= lifetime) throw new Error("Cópia expirada ou inválida");
+  return record;
+}
+export function ambiguousSave(error: unknown) {
+  const e = error as { status?: number; response?: { status?: number } };
+  const status = e?.status || e?.response?.status;
+  return !status || status >= 500;
+}

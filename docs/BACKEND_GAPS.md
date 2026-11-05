@@ -28,6 +28,8 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 | [BG-018](#bg-018) | Inconsistência de contrato | Validação monetária e de precisão insuficiente nos itens de venda |
 | [BG-019](#bg-019) | Inconsistência de contrato | Resposta de item omite total persistido e unidade histórica |
 | [BG-020](#bg-020) | Defeito | Senha recebida atribuída diretamente a senhaHash |
+| [BG-021](#bg-021) | Capacidade ausente | Criação sem idempotência de requisição |
+| [BG-022](#bg-022) | Capacidade ausente | Compra sem versão de concorrência |
 
 <a id="bg-001"></a>
 ## BG-001 — Funções de conclusão de estoque sem migração versionada
@@ -287,4 +289,30 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Impacto/contorno no frontend:** Sem gestão de usuários ou autenticação. Operador descartável é criado somente por teste upstream com segredo aleatório.
 - **Correção solicitada:** Aplicar hash de senha adequado e política consistente de criação/atualização, com tratamento seguro de credenciais.
 - **Aceite testável:** Teste de serviço comprova hash verificável diferente da senha recebida; resposta/log não expõe senha nem hash.
+- **Commit de correção:** pendente.
+
+<a id="bg-021"></a>
+## BG-021 — Criação de compras e vendas sem idempotência de requisição
+
+- **Tipo:** Capacidade ausente.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção; duplicação após timeout não foi reproduzida.
+- **Fonte:** [CompraController.criar](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/controller/CompraController.java), [VendaController.criar](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/controller/VendaController.java), CompraService.criar e VendaService.criar no mesmo commit.
+- **Comportamento observado:** Os controllers recebem somente o DTO; serviços criam nova entidade com ID gerado. Não há chave de requisição persistida ou resposta anterior recuperável nesses caminhos.
+- **Impacto/contorno no frontend:** Uma perda de resposta pode esconder uma gravação concluída. Manter recuperação e orientar consulta à lista antes de repetir; nunca reenviar POST automaticamente. Sucesso reconhecido limpa recuperação e bloqueia novo envio mesmo se refresh falhar.
+- **Correção solicitada:** Aceitar chave de idempotência com escopo e retenção documentados, persistindo resultado atomicamente com o documento; rejeitar reutilização com payload diferente.
+- **Aceite testável:** Repetir a mesma chave/payload, inclusive após perda de resposta e em chamadas concorrentes, retorna o mesmo ID com exatamente um documento; payload divergente retorna conflito.
+- **Commit de correção:** pendente.
+
+<a id="bg-022"></a>
+## BG-022 — Compra sem versão ou precondição de concorrência
+
+- **Tipo:** Capacidade ausente.
+- **Commit inspecionado:** `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`.
+- **Situação:** Confirmado por inspeção; perda de atualização concorrente não foi reproduzida. O teste de recuperação altera uma compra sequencialmente para verificar bloqueio local, sem alegar reprodução de corrida.
+- **Fonte:** [CompraService.atualizar](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/CompraService.java), [Compra](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/entity/Compra.java) e CompraController.atualizar no mesmo commit.
+- **Comportamento observado:** PUT verifica RASCUNHO, exclui itens anteriores e aplica todo o DTO. A entidade não possui `@Version`; o controller não recebe `If-Match` nem versão do registro.
+- **Impacto/contorno no frontend:** O fingerprint local bloqueia restauração quando campos editáveis, operador, status ou identidades dos itens diferem da base. Isso não elimina a janela entre GET e PUT nem substitui controle transacional no servidor.
+- **Correção solicitada:** Expor versão/ETag e exigir precondição no PUT, incluindo status/itens na mesma transação.
+- **Aceite testável:** Dois clientes leem a mesma versão; após o primeiro PUT, o segundo recebe 409/412 sem alterar cabeçalho/itens. Resposta informa como recarregar a versão atual.
 - **Commit de correção:** pendente.

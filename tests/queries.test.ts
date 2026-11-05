@@ -47,3 +47,13 @@ it("reconsulta listas, detalhe e relacionamentos ativos após uma mutação", as
   subscriptions.forEach((stop) => stop());
   client.clear();
 });
+
+it("document editors can distinguish failed refresh from an acknowledged save", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryKey = [{ url: "/api/compras" }];
+  client.setQueryData(queryKey, []);
+  const observer = new QueryObserver(client, { queryKey, staleTime: Infinity, queryFn: async () => { throw new Error("refresh failed"); } });
+  const unsubscribe = observer.subscribe(() => {});
+  await expect(refreshCatalog(client, true)).rejects.toThrow("refresh failed");
+  unsubscribe(); client.clear();
+});

@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 // All catalog queries use generated keys. Refresh every active catalog view after a
 // mutation, including category/unit names on product details and relationship tabs.
-export async function refreshCatalog(client: QueryClient) {
+export async function refreshCatalog(client: QueryClient, throwOnError = false) {
   await client.invalidateQueries({
     predicate: (query) => {
       const first = query.queryKey[0];
@@ -13,5 +13,5 @@ export async function refreshCatalog(client: QueryClient) {
         first.url.startsWith("/api/")
       );
     },
-  });
+  }, { throwOnError });
 }

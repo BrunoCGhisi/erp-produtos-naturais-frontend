@@ -347,3 +347,93 @@ test("navegação de compras em desktop/mobile e breadcrumbs", async ({
   await expect(page).toHaveURL(/\/fornecedores$/);
   await expect(page.getByRole("banner")).toContainText("Fornecedores");
 });
+
+test("recupera valores incompletos e linhas após navegação protegida e permite descarte", async ({ page }) => {
+  await setup(page);
+  await page.goto("/compras/nova");
+  await page.getByLabel("Quantidade").fill("1,");
+  await page.getByRole("button", { name: "Adicionar item" }).click();
+  await page.getByLabel("Observação").fill("Entrega local");
+  await page.getByRole("link", { name: "Cadastrar fornecedor" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "Continuar editando" }).click();
+  await expect(page.getByLabel("Observação")).toHaveValue("Entrega local");
+  await page.getByRole("link", { name: "Cadastrar fornecedor" }).click();
+  await page.getByRole("button", { name: "Sair e manter recuperação" }).click();
+  await expect(page).toHaveURL(/\/fornecedores$/);
+  await page.goto("/compras/nova");
+  await expect(page.getByLabel("Observação")).toBeDisabled();
+  await page.getByRole("button", { name: "Restaurar", exact: true }).click();
+  await expect(page.getByLabel("Quantidade").first()).toHaveValue("1,");
+  await expect(page.getByLabel("Item 2", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Descartar alterações", exact: true }).click();
+  await page.getByRole("button", { name: "Confirmar descarte" }).click();
+  await expect(page.getByLabel("Observação")).toHaveValue("");
+  await expect(page.getByLabel("Quantidade")).toHaveValue("");
+});
+
+test("restauração mantém seleção ausente visível e impede envio", async ({ page }) => {
+  const { db } = await setup(page);
+  await page.goto("/compras/nova");
+  await page.getByLabel("Fornecedor *", { exact: true }).selectOption(id(1));
+  await page.getByLabel("Loja *", { exact: true }).selectOption(id(2));
+  await fillItem(page, 1);
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  db.produtos = [{ id: id(4), nome: "Castanha" }];
+  await page.reload();
+  await page.getByRole("button", { name: "Restaurar", exact: true }).click();
+  await expect(page.getByLabel("Produto *", { exact: true })).toHaveValue(id(3));
+  await expect(page.getByRole("button", { name: "Salvar rascunho" })).toBeDisabled();
+  await expect(page.locator('option:checked').filter({ hasText: 'Indisponível:' })).toHaveCount(1);
+});
+
+test("compra alterada no servidor preserva recuperação somente para consulta", async ({ page }) => {
+  const { db } = await setup(page);
+  db.compras.push({ id: id(100), status: "RASCUNHO", idFornecedor: id(1), idLoja: id(2), observacao: "original", itens: [] });
+  await page.goto(`/compras/${id(100)}/editar`);
+  await page.getByLabel("Observação").fill("local");
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  db.compras[0].observacao = "servidor";
+  await page.reload();
+  await expect(page.getByText(/apenas para consulta manual/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Restaurar", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Observação")).toBeDisabled();
+  await expect(page.locator("pre")).toContainText("local");
+});
+
+test("duas abas exigem decisão explícita sem mesclar itens", async ({ page, context }) => {
+  await setup(page);
+  await page.goto("/compras/nova");
+  const second = await context.newPage();
+  await setup(second);
+  await second.goto("/compras/nova");
+  await expect(second.getByLabel("Observação")).toBeEnabled();
+  await page.getByLabel("Observação").fill("Primeira aba");
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  await expect(second.getByText("Recuperação alterada em outra aba", { exact: true })).toBeVisible();
+  await expect(second.getByLabel("Observação")).toBeDisabled();
+  await second.getByRole("button", { name: "Carregar cópia da outra aba" }).click();
+  await expect(second.getByLabel("Observação")).toHaveValue("Primeira aba");
+  await second.getByRole("button", { name: "Adicionar item" }).click();
+  await expect(page.getByText("Recuperação alterada em outra aba", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Carregar cópia da outra aba" }).click();
+  await expect(page.getByLabel("Item 2", { exact: true })).toBeVisible();
+  await second.close();
+});
+
+test("compra salva com falha de atualização mantém link e impede reenvio", async ({ page }) => {
+  const { writes } = await setup(page);
+  await page.goto("/compras/nova");
+  await page.getByLabel("Fornecedor *", { exact: true }).selectOption(id(1));
+  await page.getByLabel("Loja *", { exact: true }).selectOption(id(2));
+  await fillItem(page, 1);
+  await page.route("**/api/fornecedores", route => route.fulfill({ status: 500, json: {} }));
+  await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await expect(page.getByText(/Não foi possível atualizar a tela/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar rascunho" })).toBeDisabled();
+  expect(writes).toHaveLength(1);
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("vila:recovery:")))).toEqual([]);
+  await page.getByRole("link", { name: "Ver registro salvo" }).click();
+  await expect(page).toHaveURL(/\/compras\/[0-9a-f-]{36}$/);
+  expect(writes).toHaveLength(1);
+});

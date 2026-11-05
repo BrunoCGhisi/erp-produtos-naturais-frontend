@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useDocumentRecovery, MissingSelection, selectedExists } from "./document-recovery";
+import { purchaseDraftSchema, purchaseFingerprint, ambiguousSave } from "@/lib/recovery";
 import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,10 +36,11 @@ import { selectDocuments } from "@/lib/report-selectors";
 import { ExportCsv } from "./export-csv";
 import { csvNumber, isoTimestamp } from "@/lib/reports";
 const inventoryHint = "Salvar um rascunho não altera o estoque.";
-function useLookups() {
-  const suppliers = useListarFornecedores(),
-    stores = useListarLojas(),
-    products = useListarProdutos();
+function useLookups(fresh = false) {
+  const options = fresh ? { query: { refetchOnMount: "always" as const, staleTime: 0 } } : {};
+  const suppliers = useListarFornecedores(options),
+    stores = useListarLojas(options),
+    products = useListarProdutos(options);
   return { suppliers, stores, products };
 }
 function LookupErrors({ lookups }: { lookups: ReturnType<typeof useLookups> }) {
@@ -273,14 +276,12 @@ export function PurchaseRecord({
   id: string;
   edit?: boolean;
 }) {
-  const query = useBuscarCompraPorId({ path: { id } });
+  const query = useBuscarCompraPorId({ path: { id } }, { query: { refetchOnMount: edit ? "always" : true, staleTime: edit ? 0 : 30000 } });
   const lookups = useLookups();
-  if (query.isPending) return <Loading />;
+  if (query.isPending || (edit && query.isFetchedAfterMount === false && !query.isError)) return <Loading />;
   if (query.isError && !query.data)
-    return (
-      <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-    );
-  if (!query.data) return <Empty title="Compra não encontrada" />;
+    return <><ErrorNotice error={query.error} retry={() => void query.refetch()} />{edit && <UnavailablePurchaseRecovery id={id} />}</>;
+  if (!query.data) return <><Empty title="Compra não encontrada" />{edit && <UnavailablePurchaseRecovery id={id} />}</>;
   const row = query.data;
   const refreshError = query.isError ? (
     <ErrorNotice error={query.error} retry={() => void query.refetch()} />
@@ -289,7 +290,7 @@ export function PurchaseRecord({
     return (
       <>
         {refreshError}
-        <PurchaseEditor key={id} initial={row} />
+        <PurchaseEditor key={id} initial={row} verificationError={query.isError} />
       </>
     );
   return (
@@ -367,20 +368,32 @@ export function PurchaseRecord({
     </>
   );
 }
-export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
-  const lookups = useLookups(),
+function UnavailablePurchaseRecovery({ id }: { id: string }) {
+  const [draft, setDraft] = useState(() => draftValues());
+  const recovery = useDocumentRecovery({ context: `purchase:${id}`, initial: draft, values: draft, setValues: setDraft, schema: purchaseDraftSchema, applicable: false });
+  return recovery.ui;
+}
+export function PurchaseEditor({ initial, verificationError = false }: { initial?: CompraResponseDTO; verificationError?: boolean }) {
+  const lookups = useLookups(true),
     client = useQueryClient(),
     router = useRouter();
   const [draft, setDraft] = useState(() => draftValues(initial));
+  const [originalFingerprint] = useState(() => initial ? purchaseFingerprint(initial) : "");
+  const recovery = useDocumentRecovery({ context: initial?.id ? `purchase:${initial.id}` : "purchase:new", initial: draftValues(initial), values: draft, setValues: setDraft, schema: purchaseDraftSchema, baseline: initial ? purchaseFingerprint(initial) : "", applicable: !verificationError && (!initial || initial.status === "RASCUNHO") });
+  const [savedLink, setSavedLink] = useState("");
+  const [postSaveError, setPostSaveError] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState<unknown>(),
     [statusError, setStatusError] = useState<unknown>(),
     [busy, setBusy] = useState(false),
     [status, setStatus] = useState(initial?.status);
   const savedStatus = initial?.status !== "RASCUNHO" ? initial?.status : status;
-  const locked = !!initial && savedStatus !== "RASCUNHO";
+  const changedBaseline = !!initial && purchaseFingerprint(initial) !== originalFingerprint;
+  const locked = verificationError || (!!initial && (savedStatus !== "RASCUNHO" || changedBaseline));
   const prerequisites = Object.values(lookups).every(
-    (q) => q.isSuccess && !!q.data?.length,
+    (q) => q.isSuccess && !q.isFetching && !!q.data?.length,
   );
+  const selectionsValid = selectedExists(draft.idFornecedor, lookups.suppliers.data) && selectedExists(draft.idLoja, lookups.stores.data) && draft.itens.every(i => selectedExists(i.idProduto, lookups.products.data));
   let total: number | undefined;
   try {
     total = preview(draft.itens);
@@ -403,7 +416,7 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy || locked || !prerequisites) return;
+    if (busy || locked || recovery.blocked || savedLink || !prerequisites || !selectionsValid) return;
     setError(undefined);
     let body;
     try {
@@ -423,10 +436,16 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
       const saved = initial?.id
         ? await atualizarCompra({ path: { id: initial.id }, body }).unwrap()
         : await criarCompra({ body }).unwrap();
-      await refreshCatalog(client);
-      router.push(`/compras/${saved.id}`);
+      recovery.commit();
+      const link = `/compras/${saved.id}`;
+      setSavedLink(link);
+      try {
+        await refreshCatalog(client, true);
+        router.push(link);
+      } catch { setPostSaveError(true); }
     } catch (err) {
       setError(err);
+      setUncertain(ambiguousSave(err));
       if (initial?.id) {
         if (
           errorMessage(err)
@@ -448,6 +467,11 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
         description={inventoryHint}
       />
       <LookupErrors lookups={lookups} />
+      {recovery.ui}
+      {!selectionsValid && <p role="alert">Há seleções indisponíveis. Selecione novamente os cadastros indicados antes de salvar.</p>}
+      {savedLink && <p role="status">Documento salvo. {postSaveError && "Não foi possível atualizar a tela."} <Link href={savedLink}>Ver registro salvo</Link></p>}
+      {uncertain && <p role="alert">Não foi possível confirmar a gravação. Confira a <Link href="/compras">lista de registros</Link> antes de tentar novamente. A solicitação não será reenviada automaticamente.</p>}
+
       <div className="mb-5 flex flex-wrap gap-4">
         <Link href="/fornecedores">Cadastrar fornecedor</Link>
         <Link href="/lojas">Cadastrar loja</Link>
@@ -459,7 +483,8 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
           fornecedor, uma loja e um produto.
         </p>
       )}
-      {locked && (
+      {changedBaseline && !savedLink && <p role="alert">A compra salva mudou desde a abertura. Reabra a edição para comparar a recuperação local com o registro atual.</p>}
+      {!!initial && savedStatus !== "RASCUNHO" && (
         <p role="alert" className="mb-4">
           Somente compras em rascunho podem ser alteradas. Status salvo:{" "}
           {purchaseStatus(savedStatus)}.{" "}
@@ -477,7 +502,7 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
         </div>
       )}
       <form onSubmit={submit} noValidate aria-busy={busy}>
-        <fieldset disabled={busy || locked} className="space-y-5">
+        <fieldset disabled={busy || locked || recovery.blocked || !!savedLink} className="space-y-5">
           <Panel className="grid grid-cols-2 gap-5 p-5 mobile:grid-cols-1">
             <label>
               Fornecedor *
@@ -490,6 +515,7 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
                 }
               >
                 <option value="">Selecione…</option>
+                <MissingSelection value={draft.idFornecedor} rows={lookups.suppliers.data} />
                 {lookups.suppliers.data?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nomeFantasia}
@@ -506,6 +532,7 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
                 onChange={(e) => setDraft({ ...draft, idLoja: e.target.value })}
               >
                 <option value="">Selecione…</option>
+                <MissingSelection value={draft.idLoja} rows={lookups.stores.data} />
                 {lookups.stores.data?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nomeFantasia}
@@ -568,6 +595,7 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
                     onChange={(e) => change("idProduto", e.target.value)}
                   >
                     <option value="">Selecione…</option>
+                    <MissingSelection value={item.idProduto} rows={lookups.products.data} />
                     {lookups.products.data?.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome}
@@ -631,7 +659,7 @@ export function PurchaseEditor({ initial }: { initial?: CompraResponseDTO }) {
             Prévia total: <strong>{currency(total)}</strong>
           </p>
           <div className="flex flex-wrap gap-4">
-            <Button type="submit" disabled={busy || locked || !prerequisites}>
+            <Button type="submit" disabled={busy || locked || recovery.blocked || !!savedLink || !prerequisites || !selectionsValid}>
               {busy ? "Salvando…" : "Salvar rascunho"}
             </Button>
             <Button asChild variant="outline">

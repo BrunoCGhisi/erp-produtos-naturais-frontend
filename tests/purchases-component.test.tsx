@@ -3,9 +3,12 @@ import "./setup";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, expect, it, vi } from "vitest";
+import { recoveryKey, purchaseFingerprint } from "@/lib/recovery";
+import { draftValues } from "@/lib/purchases";
 import { PurchaseEditor, PurchaseRecord } from "@/components/purchases";
 const state = vi.hoisted(() => ({
   recordError: false,
+  recordMissing: false,
   push: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
@@ -14,7 +17,7 @@ const state = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: state.push }) }));
 vi.mock("@/generated/sdk/hooks/useBuscarCompraPorId", () => ({
   useBuscarCompraPorId: () => ({
-    data: initial,
+    data: state.recordMissing ? undefined : initial,
     isPending: false,
     isError: state.recordError,
     error: { status: 502 },
@@ -80,6 +83,7 @@ function renderEditor() {
 beforeEach(() => {
   vi.clearAllMocks();
   state.recordError = false;
+  state.recordMissing = false;
 });
 it("mostra validação de desconto antes do envio e mantém os campos para correção", async () => {
   renderEditor();
@@ -193,4 +197,29 @@ it("falha de atualização do detalhe preserva o editor e seus valores", () => {
   );
   expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível");
   expect(screen.getByLabelText("Observação")).toHaveValue("Rascunho local");
+});
+
+it("gravação confirmada com refresh falho limpa recuperação e impede reenvio", async () => {
+  state.update.mockResolvedValue(initial);
+  const client = renderEditor();
+  vi.spyOn(client, "invalidateQueries").mockRejectedValue(new Error("refresh"));
+  fireEvent.change(screen.getByLabelText("Observação"), { target: { value: "Persistir" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+  expect(await screen.findByRole("link", { name: "Ver registro salvo" })).toHaveAttribute("href", `/compras/${id}`);
+  expect(screen.getByText(/Não foi possível atualizar a tela/)).toBeVisible();
+  expect(screen.getByRole("button", { name: "Salvar rascunho" })).toBeDisabled();
+  expect(localStorage.length).toBe(0);
+  expect(state.update).toHaveBeenCalledTimes(1);
+});
+
+it("compra desaparecida mantém cópia local em consulta sem permitir aplicação", () => {
+  const key = recoveryKey("test-backend", `purchase:${id}`);
+  localStorage.setItem(key, JSON.stringify({ version: 1, updatedAt: Date.now(), revision: "saved", baseline: purchaseFingerprint(initial), values: { ...draftValues(initial), observacao: "Referência offline" } }));
+  state.recordMissing = true;
+  state.recordError = true;
+  render(<QueryClientProvider client={new QueryClient()}><PurchaseRecord id={id} edit /></QueryClientProvider>);
+  expect(screen.getByText(/apenas para consulta manual/)).toBeVisible();
+  expect(screen.getByText(/Referência offline/)).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Restaurar" })).toBeNull();
+  expect(localStorage.getItem(key)).not.toBeNull();
 });

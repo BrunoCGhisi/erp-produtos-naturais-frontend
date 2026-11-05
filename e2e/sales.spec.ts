@@ -198,3 +198,23 @@ test("lista combina filtros locais, datas inclusivas, ordem e conserva dados em 
     "CONCLUIDA",
   );
 });
+
+test("venda recupera entradas e itens no reload e descarta ao sair", async ({ page }) => {
+  await setup(page);
+  await page.goto("/vendas/nova");
+  await page.getByLabel("Cliente *", { exact: true }).selectOption(id(1));
+  await page.getByLabel("Quantidade").fill("0,");
+  await page.getByRole("button", { name: "Adicionar item" }).click();
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Restaurar", exact: true }).click();
+  await expect(page.getByLabel("Quantidade").first()).toHaveValue("0,");
+  await expect(page.getByLabel("Cliente *", { exact: true })).toHaveValue(id(1));
+  await expect(page.getByLabel("Item 2", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Voltar", exact: true }).click();
+  await page.getByRole("button", { name: "Descartar e sair" }).click();
+  await expect(page).toHaveURL(/\/vendas$/);
+  await page.goto("/vendas/nova");
+  await expect(page.getByRole("button", { name: "Restaurar", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Quantidade")).toHaveValue("");
+});

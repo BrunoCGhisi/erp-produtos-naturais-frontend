@@ -48,6 +48,9 @@ test("compras reais: fornecedor e rascunho com vários itens, edição e reload"
   await page.getByRole("button", { name: "Adicionar item" }).click();
   await fill(2, fixture.otherProduct, "0,001", "5", "0");
   await page.getByLabel("Data da compra").fill("2026-11-04T23:59:59");
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Restaurar", exact: true }).click();
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
   await expect(page).toHaveURL(/\/compras\/[0-9a-f-]{36}$/);
   const url = page.url();
@@ -62,6 +65,9 @@ test("compras reais: fornecedor e rascunho com vários itens, edição e reload"
   await expect(page.getByLabel("Custo unitário").first()).toHaveValue("2,3456");
   await page.getByLabel("Quantidade").first().fill("2,125");
   await page.getByRole("button", { name: "Remover item 2" }).click();
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Restaurar", exact: true }).click();
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
   await expect(page).toHaveURL(url);
   await page.reload();
@@ -70,5 +76,20 @@ test("compras reais: fornecedor e rascunho com vários itens, edição e reload"
   );
   await expect(page.getByRole("row")).toHaveCount(2);
   expect(await (await request.get("/api/estoques")).json()).toEqual(stock);
+  // Simulate a separate editor updating the saved draft through the real API.
+  await page.goto(`${url}/editar`);
+  await page.getByLabel("Observação").fill("Referência local preservada");
+  await expect(page.getByText("Recuperação salva neste navegador", { exact: true })).toBeVisible();
+  const saved = await (await request.get(new URL(url).pathname.replace("/compras/", "/api/compras/"))).json();
+  const response = await request.put(`/api/compras/${saved.id}`, { data: {
+    idFornecedor: saved.idFornecedor, idLoja: saved.idLoja, idUsuario: saved.idUsuario,
+    status: "RASCUNHO", observacao: "Alteração concorrente", dataCompra: saved.dataCompra,
+    itens: saved.itens.map((i: Record<string, unknown>) => ({ id: i.id, idProduto: i.idProduto, quantidade: i.quantidade, custoUnitario: i.custoUnitario, desconto: i.desconto })),
+  } });
+  expect(response.ok()).toBeTruthy();
+  await page.reload();
+  await expect(page.getByText(/apenas para consulta manual/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Restaurar", exact: true })).toHaveCount(0);
+  await expect(page.locator("pre")).toContainText("Referência local preservada");
   // Runner removes item rows with test-only SQL, headers and suppliers before catalog.
 });

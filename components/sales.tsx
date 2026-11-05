@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useDocumentRecovery, MissingSelection, selectedExists } from "./document-recovery";
+import { saleDraftSchema, ambiguousSave } from "@/lib/recovery";
 import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,12 +38,13 @@ import { ExportCsv } from "./export-csv";
 import { csvNumber, isoTimestamp } from "@/lib/reports";
 const inventoryHint =
   "Registrar uma venda aberta não conclui o checkout nem baixa o estoque. Vendas salvas são somente leitura.";
-function useLookups() {
-  const users = useListarUsuarios(),
-    units = useListarUnidadesMedida(),
-    customers = useListarClientes(),
-    stores = useListarLojas(),
-    products = useListarProdutos();
+function useLookups(fresh = false) {
+  const options = fresh ? { query: { refetchOnMount: "always" as const, staleTime: 0 } } : {};
+  const users = useListarUsuarios(options),
+    units = useListarUnidadesMedida(options),
+    customers = useListarClientes(options),
+    stores = useListarLojas(options),
+    products = useListarProdutos(options);
   return { customers, stores, products, users, units };
 }
 function LookupErrors({ lookups }: { lookups: ReturnType<typeof useLookups> }) {
@@ -378,10 +381,14 @@ export function SaleRecord({ id }: { id: string }) {
   );
 }
 export function SaleEditor() {
-  const lookups = useLookups(),
+  const lookups = useLookups(true),
     client = useQueryClient(),
     router = useRouter();
   const [draft, setDraft] = useState(draftValues);
+  const recovery = useDocumentRecovery({ context: "sale:new", initial: draftValues(), values: draft, setValues: setDraft, schema: saleDraftSchema });
+  const [savedLink, setSavedLink] = useState("");
+  const [postSaveError, setPostSaveError] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
   const prerequisites = [
@@ -389,7 +396,8 @@ export function SaleEditor() {
     lookups.stores,
     lookups.products,
     lookups.users,
-  ].every((q) => q.isSuccess && !!q.data?.length);
+  ].every((q) => q.isSuccess && !q.isFetching && !!q.data?.length);
+  const selectionsValid = selectedExists(draft.idCliente, lookups.customers.data) && selectedExists(draft.idUsuario, lookups.users.data) && selectedExists(draft.idLoja, lookups.stores.data) && draft.itens.every(i => selectedExists(i.idProduto, lookups.products.data));
   let total: number | undefined,
     roundingDifference = false;
   try {
@@ -399,7 +407,7 @@ export function SaleEditor() {
   } catch {}
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy || !prerequisites) return;
+    if (busy || recovery.blocked || savedLink || !prerequisites || !selectionsValid) return;
     setError(undefined);
     let body;
     try {
@@ -416,10 +424,16 @@ export function SaleEditor() {
     setBusy(true);
     try {
       const saved = await criarVenda({ body }).unwrap();
-      await refreshCatalog(client);
-      router.push(`/vendas/${saved.id}`);
+      recovery.commit();
+      const link = `/vendas/${saved.id}`;
+      setSavedLink(link);
+      try {
+        await refreshCatalog(client, true);
+        router.push(link);
+      } catch { setPostSaveError(true); }
     } catch (err) {
       setError(err);
+      setUncertain(ambiguousSave(err));
     } finally {
       setBusy(false);
     }
@@ -432,6 +446,11 @@ export function SaleEditor() {
         description={inventoryHint}
       />
       <LookupErrors lookups={lookups} />
+      {recovery.ui}
+      {!selectionsValid && <p role="alert">Há seleções indisponíveis. Selecione novamente os cadastros indicados antes de salvar.</p>}
+      {savedLink && <p role="status">Documento salvo. {postSaveError && "Não foi possível atualizar a tela."} <Link href={savedLink}>Ver registro salvo</Link></p>}
+      {uncertain && <p role="alert">Não foi possível confirmar a gravação. Confira a <Link href="/vendas">lista de registros</Link> antes de tentar novamente. A solicitação não será reenviada automaticamente.</p>}
+
       <div className="mb-5 flex flex-wrap gap-4">
         <Link href="/clientes">Cadastrar cliente</Link>
         <Link href="/lojas">Cadastrar loja</Link>
@@ -446,7 +465,7 @@ export function SaleEditor() {
       )}
       {!!error && <ErrorNotice error={error} />}
       <form onSubmit={submit} noValidate aria-busy={busy}>
-        <fieldset disabled={busy} className="space-y-5">
+        <fieldset disabled={busy || recovery.blocked || !!savedLink} className="space-y-5">
           <Panel className="grid grid-cols-2 gap-5 p-5 mobile:grid-cols-1">
             <label>
               Cliente *
@@ -459,6 +478,7 @@ export function SaleEditor() {
                 }
               >
                 <option value="">Selecione…</option>
+                <MissingSelection value={draft.idCliente} rows={lookups.customers.data} />
                 {lookups.customers.data?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nome}
@@ -475,6 +495,7 @@ export function SaleEditor() {
                 onChange={(e) => setDraft({ ...draft, idLoja: e.target.value })}
               >
                 <option value="">Selecione…</option>
+                <MissingSelection value={draft.idLoja} rows={lookups.stores.data} />
                 {lookups.stores.data?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nomeFantasia}
@@ -507,6 +528,7 @@ export function SaleEditor() {
                 }
               >
                 <option value="">Selecione…</option>
+                <MissingSelection value={draft.idUsuario} rows={lookups.users.data} />
                 {lookups.users.data?.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.nome}
@@ -550,6 +572,7 @@ export function SaleEditor() {
                     onChange={(e) => change("idProduto", e.target.value)}
                   >
                     <option value="">Selecione…</option>
+                    <MissingSelection value={item.idProduto} rows={lookups.products.data} />
                     {lookups.products.data?.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome}
@@ -613,7 +636,7 @@ export function SaleEditor() {
             Prévia total: <strong>{currency(total)}</strong>
           </p>
           <div className="flex flex-wrap gap-4">
-            <Button type="submit" disabled={busy || !prerequisites}>
+            <Button type="submit" disabled={busy || recovery.blocked || !!savedLink || !prerequisites || !selectionsValid}>
               {busy ? "Salvando…" : "Salvar venda aberta"}
             </Button>
             <Button asChild variant="outline">

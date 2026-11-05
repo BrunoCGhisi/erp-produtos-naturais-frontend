@@ -164,3 +164,15 @@ Exportação fica desabilitada durante carga/refresh, erro ou consulta desatuali
 A solução depende dos arrays completos da API (BG-013): volume crescente exige agregações no servidor, paginação e exportação filtrada/ordenada no servidor. Não calcula lucro, valoração de estoque, somas entre unidades ou pagamentos. Backend e SDK continuam fixados nas referências anteriores.
 
 Os testes `tests/reports.test.ts`, `e2e/reports.spec.ts` e `e2e-live/reports.spec.ts` verificam centavos, status, datas, seletores, formato CSV e relatórios contra registros reais. Os seeds de integração criam 25 vendas e 25 compras de junho/2020, com status mistos, exclusivamente no banco descartável **antes** das suítes; a limpeza remove vendas antes de clientes/operador e itens de compra antes de cabeçalhos/fornecedores, depois estoque/catálogo. Evidência final desta etapa no handoff.
+
+## Recuperação de compras e vendas (etapa 6)
+
+Nova compra, edição de compra e nova venda guardam valores digitados e linhas de itens no `localStorage`, após 300 ms de inatividade. A cópia pertence ao navegador/perfil/dispositivo e ao ambiente de backend configurado; não é sincronizada e não equivale a um RASCUNHO salvo no servidor. Em navegador compartilhado, outras pessoas com acesso ao mesmo perfil podem ler esses dados. Não são armazenadas credenciais nem listas completas do catálogo.
+
+A recuperação expira sete dias após a última alteração; cópias expiradas, inválidas ou incompatíveis são removidas ao abrir o formulário. Ao voltar, escolha Restaurar ou Descartar antes de editar. “Descartar alterações” pede confirmação, apaga a cópia e retorna aos valores iniciais. Limpar os dados do site também remove as cópias. Alterações em outra aba pausam gravações até escolher carregar a cópia ou substituir pela edição local, sem mesclar itens.
+
+Links da aplicação pedem decisão ao sair de um formulário alterado. Fechar/recarregar usa a proteção nativa do navegador; voltar/avançar depende da cópia recuperável, sem garantia de diálogo personalizado. A gravação é tentada também na saída, mas armazenamento bloqueado/cheio e encerramento abrupto podem impedir recuperação; a interface avisa quando indisponível.
+
+Na edição, a compra é consultada antes da recuperação. Mudança dos campos editáveis, IDs de itens, operador ou status impede aplicar a cópia e a mantém visível para consulta manual; compra ausente/indisponível também mantém o painel. Seleções ausentes dos cadastros atuais permanecem visíveis e precisam ser corrigidas antes do envio. As validações de data, dinheiro e status continuam obrigatórias.
+
+Sucesso confirmado apaga a recuperação e impede reenvio antes de atualizar consultas/navegar. Se essa atualização falhar, o link do registro salvo continua disponível. Falhas de validação/API preservam valores; em erro de rede/timeout ou resposta 5xx, consulte a lista antes de repetir porque a gravação pode ter ocorrido. Não há fila offline nem replay automático. Limites do servidor: BG-021 e BG-022 em [BACKEND_GAPS](docs/BACKEND_GAPS.md).
