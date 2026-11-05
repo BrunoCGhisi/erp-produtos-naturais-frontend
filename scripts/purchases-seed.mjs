@@ -87,7 +87,15 @@ export function purchasesSeed({ base, sql, inventory }) {
       console.log(
         "Compras reais: totais, reload, substituição de IDs e estoque inalterado; DELETE com itens reproduziu HTTP 409.",
       );
-      return { ...inventory, prefix, supplier: supplierId };
+      const reports = [];
+      for (let i = 0; i < 25; i++) {
+        const row = await api("compras", "POST", { ...body, dataCompra: "2020-06-15T12:00:00-03:00", itens: [{ idProduto: inventory.product, quantidade: 1, custoUnitario: 2.34, desconto: 0 }] });
+        assert.match(row.id, /^[0-9a-f-]{36}$/i);
+        const status = ["RASCUNHO", "PARCIALMENTE_RECEBIDA", "RECEBIDA", "CANCELADA"][i % 4];
+        await sql(`UPDATE compra SET status = '${status}' WHERE id = '${row.id}'`);
+        reports.push({ id: row.id, status, total: row.valorTotal });
+      }
+      return { ...inventory, prefix, supplier: supplierId, reports };
     },
     async cleanup() {
       const suppliers = (await api("fornecedores")).filter((s) =>
@@ -101,7 +109,8 @@ export function purchasesSeed({ base, sql, inventory }) {
       );
       for (const purchase of purchases) {
         assert.match(purchase.id, /^[0-9a-f-]{36}$/i);
-        await sql(`DELETE FROM item_compra WHERE id_compra = '${purchase.id}'`);
+        // Reset only owned report fixtures so the normal deletion guard permits cleanup.
+        await sql(`BEGIN; UPDATE compra SET status = 'RASCUNHO' WHERE id = '${purchase.id}'; DELETE FROM item_compra WHERE id_compra = '${purchase.id}'; COMMIT;`);
         await api(`compras/${purchase.id}`, "DELETE");
       }
       for (const id of ids) await api(`fornecedores/${id}`, "DELETE");

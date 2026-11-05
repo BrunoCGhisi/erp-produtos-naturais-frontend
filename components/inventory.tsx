@@ -15,7 +15,11 @@ import { Input, Select } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Table, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { inDateRange, inventoryInstant, inventoryLink, matchesIds, matchesQuantity, movementLabels, quantity, timestamp } from "@/lib/inventory";
+import { inventoryLink, matchesIds, movementLabels, quantity, timestamp } from "@/lib/inventory";
+
+import { selectInventory } from "@/lib/report-selectors";
+import { ExportCsv } from "./export-csv";
+import { csvNumber, isoTimestamp } from "@/lib/reports";
 
 export function Inventory({ movements = false }: { movements?: boolean }) {
   const params = useSearchParams(), path = usePathname();
@@ -41,19 +45,7 @@ export function Inventory({ movements = false }: { movements?: boolean }) {
     const p = products.data?.find((x) => x.id === id);
     return units.data?.find((x) => x.id === p?.idUnidadeMedida)?.sigla || p?.siglaUnidadeMedida || p?.idUnidadeMedida || "—";
   }
-  const stockRows = (stocks.data || []).filter((x) => matchesIds(x, product, store) && productName(x.idProduto, x.nomeProduto).toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR")) && matchesQuantity(x.quantidadeAtual, amount));
-  const movementRows = (history.data || []).filter((x) => matchesIds(x, product, store) && (!type || x.tipo === type) && inDateRange(x.dataMovimentacao, start, end));
-  const rows = (movements ? movementRows : stockRows).map((x) => ({
-    ...x,
-    name: productName(x.idProduto, "nomeProduto" in x ? x.nomeProduto : undefined),
-    storeName: storeName(x.idLoja, "nomeLoja" in x ? x.nomeLoja : undefined),
-    date: "dataMovimentacao" in x ? x.dataMovimentacao : "atualizadoEm" in x ? x.atualizadoEm : undefined,
-    amount: "quantidadeAtual" in x ? x.quantidadeAtual : "quantidade" in x ? x.quantidade : undefined,
-  })).sort((a, b) => {
-    const direction = sort.endsWith("desc") ? -1 : 1;
-    const value = sort.startsWith("data") ? (a.date ? inventoryInstant(a.date).getTime() : 0) - (b.date ? inventoryInstant(b.date).getTime() : 0) : sort.startsWith("quantidade") ? (a.amount ?? 0) - (b.amount ?? 0) : a.name.localeCompare(b.name, "pt-BR");
-    return value * direction || (a.id || "").localeCompare(b.id || "");
-  });
+  const rows = selectInventory(stocks.data || [], history.data || [], movements, Object.fromEntries(params), productName, storeName);
   const pages = Math.max(1, Math.ceil(rows.length / 20));
   const page = Math.min(pages, Math.max(1, Math.trunc(Number(params.get("pagina"))) || 1));
   const current = movements ? history : stocks;
@@ -64,6 +56,11 @@ export function Inventory({ movements = false }: { movements?: boolean }) {
       <Link className="text-primary hover:underline" href={inventoryLink(movements ? "/estoque" : "/estoque/movimentacoes", product, store)}>{movements ? "Consultar saldos" : "Ver movimentações"}</Link>
       <span role="status">{current.dataUpdatedAt ? `Última atualização bem-sucedida: ${timestamp(new Date(current.dataUpdatedAt).toISOString())}` : "Aguardando primeira consulta"}{current.isFetching ? " · Atualizando…" : ""}</span>
     </div>
+    <ExportCsv name={movements ? "movimentacoes" : "estoque"} source={current} invalid={invalidRange} incomplete={[products, stores, units].some(q => !q.isSuccess) || rows.some(r => unit(r.idProduto) === "—")} headers={movements ? ["ID", "ID produto", "Produto", "ID loja", "Loja", "Unidade atual", "Tipo", "Quantidade", "Data", "Observação", "ID venda", "ID compra", "ID transferência", "ID ajuste", "ID usuário"] : ["ID registro", "ID produto", "Produto", "ID loja", "Loja", "Unidade atual", "Quantidade", "Atualizado em"]} rows={rows.map(r => {
+      const base = [r.id, r.idProduto, r.name, r.idLoja, r.storeName, unit(r.idProduto)];
+      const m = r as MovimentacaoResponseDTO;
+      return movements ? [...base, m.tipo && movementLabels[m.tipo], csvNumber(r.amount), isoTimestamp(r.date), m.observacao, m.idVenda, m.idCompra, m.idTransferencia, m.idAjusteEstoque, m.idUsuario] : [...base, csvNumber(r.amount), isoTimestamp(r.date)];
+    })} />
     {[products, stores, units].map((q, i) => q.isError && <div key={i} className="mb-3"><p className="text-sm text-muted">Não foi possível carregar {['produtos', 'lojas', 'unidades de medida'][i]}. Os registros continuam disponíveis pelos IDs.</p><ErrorNotice error={q.error} retry={() => void q.refetch()} /></div>)}
     <Panel as="section" aria-label={movements ? "Histórico de estoque" : "Saldos por produto e loja"}>
       <div className="grid grid-cols-3 gap-3 border-b border-border p-5 compact:grid-cols-2 mobile:grid-cols-1">

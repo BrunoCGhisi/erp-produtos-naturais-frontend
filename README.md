@@ -1,10 +1,10 @@
-# Vila Verde · Catálogo, estoque e compras
+# Vila Verde · Visão geral, catálogo, estoque, compras e vendas
 
-Frontend administrativo em português para catálogo, consulta de estoque, fornecedores e rascunhos de compras de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
+Frontend administrativo em português para visão geral, catálogo, consulta de estoque, fornecedores/compras, clientes/vendas abertas e relatórios CSV de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
 
 ## Estado da implementação
 
-Catálogo, consulta de estoque, fornecedores e rascunhos de compras implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md). As limitações verificadas do backend estão em [docs/BACKEND_GAPS.md](docs/BACKEND_GAPS.md).
+Visão geral, catálogo, estoque, fornecedores/compras, clientes/vendas abertas e CSVs implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md). As limitações verificadas do backend estão em [docs/BACKEND_GAPS.md](docs/BACKEND_GAPS.md).
 
 Validação anterior do catálogo em 04/11/2026, com Node 24 (a evidência da etapa 2 está no handoff):
 
@@ -28,7 +28,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abra http://localhost:3000. A raiz redireciona para `/produtos`. O lockfile versionado usa `https://registry.npmjs.org`; use `npm ci` nas instalações e na CI.
+Abra http://localhost:3000. A raiz redireciona para `/visao-geral`. O lockfile versionado usa `https://registry.npmjs.org`; use `npm ci` nas instalações e na CI.
 
 `BACKEND_API_URL=http://localhost:8080` é uma variável **somente do servidor** e deve conter a origem do backend. Reinicie o Next.js após alterá-la. Não use `NEXT_PUBLIC_` nem aponte para Render ao testar mutações.
 
@@ -142,3 +142,25 @@ Salvar cria ABERTA e abre `/vendas/[id]`, somente leitura, com totais autoritati
 A integração descartável agora cria um operador temporário diretamente na API upstream e cria cliente/venda pelo navegador em desktop/mobile, verificando arredondamento agregado, status, reload e estoque inalterado. Probes de falhas e mutações upstream ficam exclusivamente em `scripts/sales-seed.mjs`; vendas são limpas antes de clientes/operadores e do catálogo. `npm run test:integration` executa build isolado, smoke e todas as suítes reais. As suítes novas são descobertas automaticamente pelos jobs existentes de CI.
 
 Validação local final da etapa 4 (05/11/2026): lint, tipos, 119 testes unitários/componentes, 50 cenários Playwright e integração real (build, smoke e 8 cenários desktop/mobile) passaram. Evidências e situação da CI remota no [handoff](docs/PLANNER_HANDOFF.md#etapa-4--clientes-e-vendas-abertas).
+
+
+## Visão geral e relatórios CSV (etapa 5)
+
+`/visao-geral` é o início da aplicação. Loja e período ficam na URL (`idLoja`, `periodo`, `inicio`, `fim`). O padrão é todas as lojas e o mês civil atual em `America/Sao_Paulo`; também há últimos 30 dias (incluindo hoje) e datas personalizadas. Limites de dias são inclusivos.
+
+- **Catálogo:** contagens globais de produtos ativos/inativos, independentes de loja e período.
+- **Estoque atual:** quantidade de registros produto/loja retornados com saldo positivo, zero ou negativo, filtrados apenas por loja. Produto sem registro não conta como saldo zero. Não é estoque histórico.
+- **Vendas/compras:** quantidade e soma do total salvo de cada documento, por status e por loja/data do documento. Vendas abertas e compras em rascunho não são receita/despesa concluída. Documentos cancelados aparecem separadamente. Valores ausentes, negativos, não finitos ou com fração de centavo deixam o resumo daquele status incompleto; nenhum total é recalculado a partir de itens.
+- As somas usam centavos inteiros (`BigInt`). Cada seção possui atualização, erro e retry próprios, preserva dados após falha de refresh com aviso de desatualização e informa sua última consulta bem-sucedida. “Atualizar” refaz as consultas. São consultas separadas, sem snapshot transacional. Os cinco documentos mais recentes levam aos detalhes; contagens e status levam às listas com os mesmos filtros.
+
+“Exportar CSV (N)” em produtos, saldos, movimentações, compras e vendas usa **todos** os resultados filtrados, na ordem da tabela, antes da paginação de 20 linhas. Seletores puros em `lib/report-selectors.ts` alimentam a tabela e o arquivo. As chamadas enviam os parâmetros suportados e reaplicam todos os filtros localmente (BG-009). Compras não têm parâmetros de listagem no SDK. Não há endpoint de exportação, SQL de aplicação ou alterações no SDK.
+
+CSV usa UTF-8 com BOM, separador `;`, CRLF, cabeçalhos/status em português, números brasileiros sem milhares e timestamps ISO com offset. Todos os campos são delimitados por aspas duplas, com aspas internas duplicadas. Textos que poderiam iniciar fórmulas recebem apóstrofo; quantidades numéricas negativas permanecem numéricas. Arquivos se chamam `vila-verde-<lista>-AAAA-MM-DD.csv`, com data de São Paulo, sem dados pessoais no nome. URLs de download são revogadas após o clique.
+
+Campos exportados: produtos (ID, nome, categoria, unidade, tipo de venda, status); saldos (ID do registro, IDs/nomes de produto/loja, unidade atual, quantidade, atualização); movimentos (ID, IDs/nomes de produto/loja, unidade atual, tipo, quantidade, data, observação e referências disponíveis de venda/compra/transferência/ajuste/usuário); compras (ID, IDs/nomes de fornecedor/loja, data, status, total salvo); vendas (ID, IDs/nomes de cliente/operador/loja, data, status, subtotal/descontos/total salvos). Compras/vendas têm uma linha por documento, sem itens. Unidades são as atuais do catálogo, não snapshots históricos (BG-019).
+
+Exportação fica desabilitada durante carga/refresh, erro ou consulta desatualizada e sem resultados. O botão “Atualizar dados” renova a fonte quando necessário. Falhas de consultas auxiliares permitem fallback por ID com aviso de rótulos incompletos.
+
+A solução depende dos arrays completos da API (BG-013): volume crescente exige agregações no servidor, paginação e exportação filtrada/ordenada no servidor. Não calcula lucro, valoração de estoque, somas entre unidades ou pagamentos. Backend e SDK continuam fixados nas referências anteriores.
+
+Os testes `tests/reports.test.ts`, `e2e/reports.spec.ts` e `e2e-live/reports.spec.ts` verificam centavos, status, datas, seletores, formato CSV e relatórios contra registros reais. Os seeds de integração criam 25 vendas e 25 compras de junho/2020, com status mistos, exclusivamente no banco descartável **antes** das suítes; a limpeza remove vendas antes de clientes/operador e itens de compra antes de cabeçalhos/fornecedores, depois estoque/catálogo. Evidência final desta etapa no handoff.

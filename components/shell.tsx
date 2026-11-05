@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Leaf,
+  LayoutDashboard,
   Package,
   Tags,
   Ruler,
@@ -42,7 +43,7 @@ const inventoryLinks = [
 function Brand() {
   return (
     <Link
-      href="/produtos"
+      href="/visao-geral"
       className="flex items-center gap-[11px] px-[7px] text-[23px] font-[650] tracking-[-0.8px] compact:text-[20px]"
     >
       <span className="flex rounded-xl bg-[#e9f2e9] p-[9px] text-primary">
@@ -71,6 +72,7 @@ function Navigation({
       aria-label="Navegação principal"
       className={cn("mt-[46px]", className)}
     >
+      <Link href="/visao-geral" onClick={onNavigate} aria-current={path === "/visao-geral" ? "page" : undefined} className="mb-6 flex items-center gap-3 rounded-[7px] px-3.5 py-3 text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:text-primary"><LayoutDashboard size={19} />Visão geral</Link>
       <p className="px-3.5 pb-2.5 text-[10px] font-semibold tracking-[1.8px] text-[#8a958c]">
         CATÁLOGO
       </p>
@@ -138,6 +140,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname(),
     [open, setOpen] = useState(false);
   const current =
+    (path === "/visao-geral" ? { label: "Visão geral" } : undefined) ||
     [...inventoryLinks].reverse().find((x) => path === x.href) ||
     salesLinks.find((x) => path.startsWith(x.href)) ||
     purchaseLinks.find((x) => path.startsWith(x.href)) ||
@@ -193,7 +196,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3 text-[12px] text-[#7b877e] mobile:gap-[7px] mobile:text-[11px]">
             <span>
-              {salesLinks.some((x) => path.startsWith(x.href))
+              {path === "/visao-geral" ? "Início" : salesLinks.some((x) => path.startsWith(x.href))
                 ? "Vendas"
                 : purchaseLinks.some((x) => path.startsWith(x.href))
                   ? "Compras"

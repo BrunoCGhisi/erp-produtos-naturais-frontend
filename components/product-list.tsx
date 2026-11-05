@@ -36,6 +36,8 @@ import {
 } from "@/components/feedback";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/delete-dialog";
+import { selectProducts } from "@/lib/report-selectors";
+import { ExportCsv } from "./export-csv";
 export function ProductList() {
   const query = useListarProdutos(),
     categories = useListarCategorias();
@@ -56,20 +58,7 @@ export function ProductList() {
     router.replace(`${path}?${next}`, { scroll: false });
   }
   const all = query.data || [];
-  const filtered = all
-    .filter(
-      (row) =>
-        (row.nome || "")
-          .toLocaleLowerCase("pt-BR")
-          .includes(search.toLocaleLowerCase("pt-BR")) &&
-        (!category || row.idCategoria === category) &&
-        (!status || row.status === status),
-    )
-    .sort(
-      (a, b) =>
-        (a.nome || "").localeCompare(b.nome || "", "pt-BR") *
-        (sort === "desc" ? -1 : 1),
-    );
+  const filtered = selectProducts(all, { busca: search, categoria: category, status, ordem: sort });
   const pages = Math.max(1, Math.ceil(filtered.length / 20)),
     page = Math.min(
       pages,
@@ -128,6 +117,7 @@ export function ProductList() {
           </div>
         ))}
       </div>
+      <ExportCsv name="produtos" source={query} incomplete={!categories.isSuccess || filtered.some(r => !r.nomeCategoria || !r.siglaUnidadeMedida)} headers={["ID", "Nome", "Categoria", "Unidade", "Tipo de venda", "Status"]} rows={filtered.map(r => [r.id, r.nome, r.nomeCategoria || categories.data?.find(c => c.id === r.idCategoria)?.nome || r.idCategoria, r.siglaUnidadeMedida || r.idUnidadeMedida, r.tipoVenda === "PESO" ? "Peso" : r.tipoVenda === "UNIDADE" ? "Unidade" : r.tipoVenda, r.status === "ATIVO" ? "Ativo" : r.status === "INATIVO" ? "Inativo" : r.status])} />
       {success && (
         <p
           role="status"

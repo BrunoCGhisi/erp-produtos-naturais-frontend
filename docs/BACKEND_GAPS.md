@@ -193,9 +193,9 @@ IDs são permanentes. Ao resolver, manter a entrada e acrescentar commit de corr
 - **Situação:** Confirmado por inspeção.
 - **Fonte:** [CompraService.listar / FornecedorService.listar e demais listar do catálogo](https://github.com/Zayma1/erp-produtos-naturais-backend/blob/e0f312e611d56ab73a4a8e3d5832f8b8874ff362/src/main/java/com/vilaverde/erp/service/CompraService.java).
 - **Comportamento observado:** Listas retornam arrays completos com findAll; compras incluem também todos os itens em cada resposta.
-- **Impacto/contorno no frontend:** Filtros, ordenação e páginas de 20 registros são locais; volume crescente aumenta tráfego e memória.
-- **Correção solicitada:** Adicionar paginação/filtros/ordenação estáveis, total e DTO resumido de compra para listagem.
-- **Aceite testável:** Consultar páginas com ordem estável não duplica/perde registros; filtros afetam total e conteúdo; limite é aplicado no banco.
+- **Impacto/contorno no frontend:** Filtros, ordenação e páginas de 20 registros são locais. A etapa 5 também carrega arrays completos para agregações da visão geral e exportação CSV de todas as linhas filtradas antes da paginação. Queries são independentes, sem snapshot transacional. Volume crescente aumenta tráfego, memória, processamento e tamanho do download no navegador; a compensação no frontend não resolve esta lacuna.
+- **Correção solicitada:** Adicionar paginação/filtros/ordenação estáveis, total e DTO resumido de compra para listagem; agregações de catálogo/estoque/documentos por status no servidor e exportações filtradas/ordenadas no servidor são requisitos de escala. As agregações devem explicitar escopo temporal/loja, status e totais incompletos.
+- **Aceite testável:** Consultar páginas com ordem estável não duplica/perde registros; filtros afetam total e conteúdo; limite é aplicado no banco. Em volume superior a uma página, agregações por status coincidem com documentos conhecidos sem transferir todos os itens, e exportação inclui todas as linhas filtradas na ordem estável pedida. Datas usam limites explícitos de São Paulo e totais inválidos não são tratados como zero.
 - **Commit de correção:** pendente.
 
 <a id="bg-014"></a>

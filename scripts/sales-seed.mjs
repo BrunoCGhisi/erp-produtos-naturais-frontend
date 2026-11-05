@@ -78,7 +78,16 @@ export function salesSeed({ base, inventory, sql }) {
       console.log(
         "Vendas: subtotal agregado 0,01, ausência de snapshots/observação, estoque inalterado; IDs ausentes HTTP 500; preço negativo aceito; PUT/DELETE de CONCLUIDA aceitos.",
       );
-      return { ...inventory, prefix, operator: operator.id };
+      // Mixed report statuses are inserted before browser suites, only in the owned DB.
+      const reports = [];
+      for (let i = 0; i < 25; i++) {
+        const row = await api("vendas", "POST", { ...body, dataVenda: "2020-06-15T12:00:00-03:00", itens: [{ idProduto: inventory.product, quantidade: 1, precoUnitario: 1.23, desconto: 0 }] });
+        assert.match(row.id, /^[0-9a-f-]{36}$/i);
+        const status = ["ABERTA", "CONCLUIDA", "CANCELADA"][i % 3];
+        await sql(`UPDATE venda SET status = '${status}' WHERE id = '${row.id}'`);
+        reports.push({ id: row.id, status, total: row.valorTotal });
+      }
+      return { ...inventory, prefix, operator: operator.id, customer: customer.id, reports };
     },
     async cleanup() {
       const customers = (await api("clientes")).filter((c) =>

@@ -19,10 +19,8 @@ import { Table, TableRow, TableHead, TableCell } from "./ui/table";
 import { refreshCatalog } from "@/lib/queries";
 import { currency } from "@/lib/validation";
 import {
-  inDateRange,
   timestamp,
   quantity,
-  inventoryInstant,
 } from "@/lib/inventory";
 import {
   blankItem,
@@ -33,6 +31,9 @@ import {
   statusLabels,
   totals,
 } from "@/lib/sales";
+import { selectDocuments } from "@/lib/report-selectors";
+import { ExportCsv } from "./export-csv";
+import { csvNumber, isoTimestamp } from "@/lib/reports";
 const inventoryHint =
   "Registrar uma venda aberta não conclui o checkout nem baixa o estoque. Vendas salvas são somente leitura.";
 function useLookups() {
@@ -96,34 +97,7 @@ export function SaleList() {
   const storeName = (id?: string) =>
     stores.find((s) => s.id === id)?.nomeFantasia || id || "—";
   const sort = value("ordem") || "data-desc";
-  const rows = [...(query.data || [])]
-    .filter(
-      (r) =>
-        (!value("idCliente") || r.idCliente === value("idCliente")) &&
-        (!value("idLoja") || r.idLoja === value("idLoja")) &&
-        (!value("status") || r.status === value("status")) &&
-        inDateRange(r.dataVenda, value("inicio"), value("fim")),
-    )
-    .sort((a, b) => {
-      const direction = sort.endsWith("asc") ? 1 : -1;
-      const diff = sort.startsWith("total")
-        ? (a.valorTotal ?? 0) - (b.valorTotal ?? 0)
-        : sort.startsWith("cliente")
-          ? customerName(a.idCliente).localeCompare(
-              customerName(b.idCliente),
-              "pt-BR",
-            )
-          : sort.startsWith("loja")
-            ? storeName(a.idLoja).localeCompare(storeName(b.idLoja), "pt-BR")
-            : sort.startsWith("status")
-              ? saleStatus(a.status).localeCompare(
-                  saleStatus(b.status),
-                  "pt-BR",
-                )
-              : (a.dataVenda ? inventoryInstant(a.dataVenda).getTime() : 0) -
-                (b.dataVenda ? inventoryInstant(b.dataVenda).getTime() : 0);
-      return direction * (diff || (a.id || "").localeCompare(b.id || ""));
-    });
+  const rows = selectDocuments(query.data || [], Object.fromEntries(params), "sales", customerName, storeName);
   const pages = Math.max(1, Math.ceil(rows.length / 20)),
     page = Math.min(
       pages,
@@ -141,6 +115,7 @@ export function SaleList() {
           </Button>
         }
       />
+      <ExportCsv name="vendas" source={query} invalid={!!value("inicio") && !!value("fim") && value("inicio") > value("fim")} incomplete={[lookups.customers, lookups.stores, lookups.users].some(q => !q.isSuccess)} headers={["ID", "ID cliente", "Cliente", "ID operador", "Operador", "ID loja", "Loja", "Data", "Status", "Subtotal salvo", "Descontos", "Total final salvo"]} rows={rows.map(r => [r.id, r.idCliente, customerName(r.idCliente), r.idUsuario, lookups.users.data?.find(u => u.id === r.idUsuario)?.nome || r.nomeUsuario || r.idUsuario, r.idLoja, storeName(r.idLoja), isoTimestamp(r.dataVenda), saleStatus(r.status), csvNumber(r.subtotal, 2), csvNumber(r.descontoTotal, 2), csvNumber(r.valorTotal, 2)])} />
       <LookupErrors lookups={lookups} />
       <Panel>
         <div className="grid grid-cols-3 gap-4 p-5 mobile:grid-cols-1">
@@ -182,6 +157,7 @@ export function SaleList() {
               onChange={(e) => control("status", e.target.value)}
             >
               <option value="">Todos os status</option>
+              {value("status") === "SEM_STATUS" && <option value="SEM_STATUS">Sem status</option>}
               {[
                 ...new Set([
                   ...Object.keys(statusLabels),

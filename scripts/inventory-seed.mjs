@@ -6,7 +6,7 @@ export function inventorySeed({ base, sql }) {
   const productIds = [];
   async function api(resource, method = "GET", body) {
     const response = await fetch(`${base}/api/${resource}`, { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body), signal: AbortSignal.timeout(15000) });
-    if (!response.ok) throw new Error(`Fixture ${method} ${resource}: ${response.status()} ${await response.text()}`);
+    if (!response.ok) throw new Error(`Fixture ${method} ${resource}: ${response.status} ${await response.text()}`);
     return response.status === 204 ? undefined : response.json();
   }
   async function create(resource, body) {

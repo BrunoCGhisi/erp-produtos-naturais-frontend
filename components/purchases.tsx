@@ -19,7 +19,7 @@ import { Table, TableRow, TableHead, TableCell } from "./ui/table";
 import { errorMessage } from "@/lib/errors";
 import { refreshCatalog } from "@/lib/queries";
 import { currency } from "@/lib/validation";
-import { inDateRange, timestamp, quantity } from "@/lib/inventory";
+import { timestamp, quantity } from "@/lib/inventory";
 import {
   blankItem,
   draftValues,
@@ -30,6 +30,9 @@ import {
   statusLabels,
   unitCost,
 } from "@/lib/purchases";
+import { selectDocuments } from "@/lib/report-selectors";
+import { ExportCsv } from "./export-csv";
+import { csvNumber, isoTimestamp } from "@/lib/reports";
 const inventoryHint = "Salvar um rascunho não altera o estoque.";
 function useLookups() {
   const suppliers = useListarFornecedores(),
@@ -83,33 +86,7 @@ export function PurchaseList() {
   const storeName = (id?: string) =>
     stores.find((s) => s.id === id)?.nomeFantasia || id || "—";
   const sort = value("ordem") || "data-desc";
-  const rows = [...(query.data || [])]
-    .filter(
-      (r) =>
-        (!value("idFornecedor") || r.idFornecedor === value("idFornecedor")) &&
-        (!value("idLoja") || r.idLoja === value("idLoja")) &&
-        (!value("status") || r.status === value("status")) &&
-        inDateRange(r.dataCompra, value("inicio"), value("fim")),
-    )
-    .sort((a, b) => {
-      const direction = sort.endsWith("asc") ? 1 : -1;
-      const diff = sort.startsWith("total")
-        ? (a.valorTotal ?? 0) - (b.valorTotal ?? 0)
-        : sort.startsWith("fornecedor")
-          ? supplierName(a.idFornecedor).localeCompare(
-              supplierName(b.idFornecedor),
-              "pt-BR",
-            )
-          : sort.startsWith("loja")
-            ? storeName(a.idLoja).localeCompare(storeName(b.idLoja), "pt-BR")
-            : sort.startsWith("status")
-              ? purchaseStatus(a.status).localeCompare(
-                  purchaseStatus(b.status),
-                  "pt-BR",
-                )
-              : Date.parse(a.dataCompra || "") - Date.parse(b.dataCompra || "");
-      return direction * (diff || (a.id || "").localeCompare(b.id || ""));
-    });
+  const rows = selectDocuments(query.data || [], Object.fromEntries(params), "purchases", supplierName, storeName);
   const pages = Math.max(1, Math.ceil(rows.length / 20)),
     page = Math.min(
       pages,
@@ -127,6 +104,7 @@ export function PurchaseList() {
           </Button>
         }
       />
+      <ExportCsv name="compras" source={query} invalid={!!value("inicio") && !!value("fim") && value("inicio") > value("fim")} incomplete={[lookups.suppliers, lookups.stores].some(q => !q.isSuccess)} headers={["ID", "ID fornecedor", "Fornecedor", "ID loja", "Loja", "Data", "Status", "Total salvo"]} rows={rows.map(r => [r.id, r.idFornecedor, supplierName(r.idFornecedor), r.idLoja, storeName(r.idLoja), isoTimestamp(r.dataCompra), purchaseStatus(r.status), csvNumber(r.valorTotal, 2)])} />
       <LookupErrors lookups={lookups} />
       <Panel>
         <div className="grid grid-cols-3 gap-4 p-5 mobile:grid-cols-1">
@@ -168,6 +146,7 @@ export function PurchaseList() {
               onChange={(e) => control("status", e.target.value)}
             >
               <option value="">Todos os status</option>
+              {value("status") === "SEM_STATUS" && <option value="SEM_STATUS">Sem status</option>}
               {[
                 ...new Set([
                   ...Object.keys(statusLabels),

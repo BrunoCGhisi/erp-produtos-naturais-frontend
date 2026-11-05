@@ -224,3 +224,36 @@ Validação sobre o código final, Node 24 e backend fixado em `e0f312e611d56ab7
 Logs finais temporários em `integration-artifacts/`, incluindo build com as quatro rotas novas e `database-cleanup.log`. Não há containers `vila-integration-*` restantes. As primeiras execuções detectaram seletores ambíguos de alerta/total nos testes; foram corrigidos com escopos de diálogo/main e expressão ancorada. Na revisão final foi corrigido o título da coluna CLIENTE; todas as suítes e integração foram repetidas depois desse ajuste. Os probes negativos retornam os resultados documentados, sem correções de backend.
 
 CI: os jobs `validate` e `integration` do workflow existente incluem automaticamente todos os testes novos. As execuções acima são **locais**, não uma execução da CI remota. Esta etapa não foi enviada ao remoto; não há URL de CI nova para este commit. Nenhum deploy ou merge foi realizado.
+
+## Etapa 5 — visão geral e relatórios CSV
+
+`/` redireciona para `/visao-geral`, com link acima dos grupos existentes e marca levando ao início. A sidebar preserva largura de seleção, marca fixa, rolagem e menu móvel. Loja/período/datas ficam na URL; padrão é todas as lojas e mês civil de São Paulo, com últimos 30 dias inclusivos e intervalo personalizado.
+
+Catálogo conta produtos ativos/inativos globalmente. Estoque conta registros produto/loja retornados com saldo positivo/zero/negativo, somente por loja, sem histórico ou inferência de saldo zero para produtos ausentes. Vendas/compras contam documentos e somam seus totais salvos separadamente por cada status, loja e data inclusiva em São Paulo. Soma em centavos `BigInt`; campos ausentes, não finitos, negativos ou com fração de centavo tornam aquele resumo incompleto. Cinco documentos recentes têm links para detalhes; cartões/status abrem listas com filtros equivalentes. Não há lucro, valoração, somas entre unidades ou indicadores de pagamento.
+
+Seções usam queries geradas independentes, com carga/erro/retry próprios, última atualização bem-sucedida e retenção de dados com aviso após falha de refresh. Atualização global refaz as consultas, sem prometer snapshot transacional. Filtros suportados são enviados à API e todos são reaplicados localmente. Compras continuam sem parâmetros de consulta no SDK.
+
+CSV em produtos, saldos, movimentações, compras e vendas inclui todos os resultados anteriores à paginação, na mesma ordem da tabela. `lib/report-selectors.ts` contém os seletores puros usados por tabela/exportação; `lib/reports.ts` contém agregação, períodos e serialização; `components/export-csv.tsx` controla download e disponibilidade. Formato: UTF-8 BOM, `;`, CRLF, cabeçalhos/status portugueses, decimais brasileiros sem milhares, datas ISO com offset, aspas duplicadas e neutralização de fórmulas somente em texto. Números negativos de estoque são preservados. Nome usa data de São Paulo sem dados pessoais; URL temporária é revogada. Uma linha por documento, sem exportação de itens. Falha de lookup permite IDs e aviso de rótulos incompletos; unidade é a atual. Carga, refresh, fonte com erro/desatualizada e zero resultados bloqueiam a exportação.
+
+BG-013 foi ampliada para documentar arrays completos, custo de agregação/download no navegador e necessidade futura de agregados e exportações filtradas/ordenadas no servidor. BG-009/BG-019 continuam aplicáveis. Nenhuma lacuna foi marcada resolvida, nem houve alteração de backend, SDK, dependências, endpoints de exportação ou SQL de aplicação.
+
+Fixtures de relatório são criadas antes das suítes em `scripts/purchases-seed.mjs` e `scripts/sales-seed.mjs`: 25 documentos de cada tipo, junho/2020, com status mistos e valores conhecidos. SQL de status só é executado pelo runner no banco que ele criou. Limpeza mantém vendas antes de clientes/operador e itens de compra antes de cabeçalhos/fornecedores, depois estoque/catálogo. Para excluir as compras de relatório, restaura RASCUNHO somente nas fixtures próprias antes de apagar os itens; a aplicação não faz transições. Também foi corrigida a leitura de `response.status` na mensagem de erro do seed de estoque.
+
+Testes novos: `tests/reports.test.ts` (status, centavos, totais incompletos, limites de datas, seletores e CSV); `e2e/reports.spec.ts` (desktop/mobile, URL, links, falha de refresh, downloads com 25 linhas nas cinco listas, fallback e bloqueio por atualização/expiração); `e2e-live/reports.spec.ts` (resumos contra fixtures reais e downloads das cinco listas, incluindo 25 vendas/compras, IDs, ordem e valores). Os jobs existentes `validate` e `integration` descobrem essas suítes automaticamente.
+
+### Validação da etapa 5 — 05/11/2026
+
+| Verificação | Resultado local |
+| --- | --- |
+| `npm run lint` | Passou |
+| `npm run typecheck` | Passou |
+| `npm test` | 127 testes em 13 arquivos passaram |
+| Playwright completo | 68 cenários desktop/mobile passaram (`npx playwright test --output=test-results/mocked-final --reporter=list`) |
+| `npm run build` | Passou, incluindo `/visao-geral` |
+| `npm run test:integration` | Passou: build isolado final, smoke e 10 cenários reais desktop/mobile |
+| Limpeza descartável | 28 vendas, 3 clientes/operador e 28 compras/3 fornecedores removidos; estoque/catálogo limpos; container próprio removido |
+| `git diff --check` | Passou |
+
+Artefatos temporários em `integration-artifacts/` e `playwright-live-report/`, ignorados pelo Git. Nenhum container `vila-integration-*` permaneceu. A primeira execução real identificou o bloqueio esperado de DELETE fora de RASCUNHO durante a limpeza; o seed foi corrigido e a integração repetida com saída 0. Os testes de navegador tiveram seletores de período/alerta corrigidos para escopos exatos. Uma execução concorrente de Playwright compartilhou a pasta de artefatos; a execução completa final usou diretório separado e passou.
+
+CI: a entrega exige sucesso dos jobs `validate` e `integration` no commit final. As evidências acima são locais; os resultados remotos ficam no [workflow da branch de entrega](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend/actions/workflows/ci.yml?query=branch%3Afeat%2Fcatalog), e serão conferidos após o push. SDK, backend e dependências permanecem fixados. Não houve deploy ou merge.
