@@ -1,6 +1,8 @@
 # Handoff para o agente planejador — Vila Verde
 
-Data: 04/11/2026. Repositório: [BrunoCGhisi/erp-produtos-naturais-frontend](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend), branch `feat/catalog`. Este documento acompanha o refactor Tailwind posterior à implementação inicial `1a4f0d2`.
+Atualização: 05/11/2026. Etapa atual: fornecedores e rascunhos de compras, descrita ao final. [Registro de lacunas do backend](BACKEND_GAPS.md).
+
+Histórico do catálogo — Data: 04/11/2026. Repositório: [BrunoCGhisi/erp-produtos-naturais-frontend](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend), branch `feat/catalog`. Este documento acompanha o refactor Tailwind posterior à implementação inicial `1a4f0d2`.
 
 ## Resultado e aderência ao plano
 
@@ -136,3 +138,51 @@ Comandos de validação desta etapa: `npm run lint`, `npm run typecheck`, `npm t
 - `git diff --check`: passou. SDK e dependências não foram alterados. O workflow continua exigindo as duas suítes de navegador e os checks anteriores; esta etapa não foi enviada ao remoto nem executada na CI nesta sessão.
 
 A execução inicial revelou seletores imprecisos e perda de filtros em navegações rápidas; foram corrigidos antes das execuções verdes acima. O runner foi ajustado para conservar o backend durante o recebimento de sinal até finalizar a limpeza das fixtures. O build da execução verde contém o código final da aplicação; as edições posteriores ampliaram testes e documentação.
+
+## Etapa 3 — fornecedores e rascunhos de compras
+
+Continuação de `6f77647`, preservando a referência de backend/SDK `e0f312e611d56ab73a4a8e3d5832f8b8874ff362`, a interface portuguesa em Tailwind e o acesso de demonstração interna. As declarações anteriores de fornecedores/compras fora do MVP descrevem as etapas históricas.
+
+Implementadas listagem e CRUD de fornecedores em `/fornecedores`, reutilizando modais/tabelas/erros existentes, com os oito campos reais do DTO, cinco obrigatórios, UF normalizada e identificação opcional. “Ver compras” abre filtro por fornecedor. Implementadas `/compras`, `/compras/nova`, `/compras/[id]` e `/compras/[id]/editar`, navegação desktop/mobile e breadcrumbs. Lista com filtros, ordem por data decrescente inicial e paginação local de 20 registros; controles restaurados pela URL.
+
+Compra inclui cabeçalho e múltiplos itens do catálogo, sem regras novas de vínculo. Validação rejeita precisão excedida, limites de numeric(14,s), quantidade zero/negativa, custo/desconto negativos e desconto superior ao bruto não arredondado. Prévia usa BigInt em escalas 3/4/2 e HALF_UP por item antes da soma. Custo não depende do preço de venda. O detalhe usa totais salvos e exibe quantidades recebidas; salvar rascunho não modifica estoque.
+
+Criação envia RASCUNHO e omite usuário/data ausente. Edição envia DTO completo com IDs de itens e idUsuario existente, preservando o instante original da data quando não alterada. Horários editáveis são convertidos pelo fuso America/Sao_Paulo para ISO com offset (inclusive horário de verão histórico); dias/horários inexistentes são rejeitados. Erros de lookup, validação, gravação e atualização do status são independentes. Formulários mantêm o conteúdo em falhas; status concorrente impede novo envio mesmo se a confirmação falhar, com retry separado.
+
+Proxy ampliado somente para fornecedores (GET/POST de coleção e GET/PUT/DELETE por UUID) e compras (GET/POST de coleção e GET/PUT por UUID). Estoque permanece somente leitura. Não há exclusão, recebimento, cancelamento, aprovação ou transições de compra na aplicação.
+
+### Lacunas para encaminhamento
+
+[BACKEND_GAPS.md](BACKEND_GAPS.md) registra BG-001 a BG-014 em português, com IDs permanentes, commit inspecionado, classificação, situação, fontes, impacto, pedido e aceite testável. Capacidade ausente, contrato inconsistente e defeito estão separados; inspeção não é apresentada como reprodução. Triggers externos de recebimentos/vendas continuam pendentes de investigação.
+
+Confirmado nesta etapa: edição recria IDs de itens; DELETE upstream de compra com item retorna 409 e o log PostgreSQL registra FK de item_compra para compra (SQLState 23503). A suíte descartável reproduz isso e confirma a permanência da compra. A validação insuficiente de precisão/desconto no DTO do backend também foi registrada (BG-014), com efeitos não ensaiados identificados como suspeitos. Nenhuma lacuna foi simulada na UI nem corrigida no backend.
+
+### Mapa e evidências da etapa
+
+- [purchases.ts](../lib/purchases.ts): validação, cálculos com inteiros, DTO e datas.
+- [purchases.tsx](../components/purchases.tsx): lista, detalhe e editor; [support-list.tsx](../components/support-list.tsx) reutilizado para fornecedores.
+- [purchases.test.ts](../tests/purchases.test.ts), [purchases-component.test.tsx](../tests/purchases-component.test.tsx), proxy e queries: precisão, HALF_UP, descontos, limites, payloads, erros e invalidação.
+- [purchases.spec.ts](../e2e/purchases.spec.ts): fluxo desktop/mobile com fixtures e falhas independentes.
+- [purchases-seed.mjs](../scripts/purchases-seed.mjs): smoke real e reprodução da FK, importado apenas pelo runner dono do container.
+- [e2e-live/purchases.spec.ts](../e2e-live/purchases.spec.ts): fornecedor pelo UI, múltiplos itens, edição/reload e estoque inalterado, sem interceptação.
+
+A limpeza real remove itens por SQL somente de teste, cabeçalhos/fornecedores por API e, por último, pré-requisitos de catálogo/estoque. Falhas de limpeza reprovam a execução. CI existente descobre os novos testes em ambos os projetos, sem mudanças nas dependências ou SDK.
+
+Validação local final em 05/11/2026, Node 24 e Java 21:
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run lint` | Passou |
+| `npm run typecheck` | Passou |
+| `npm test` | 82 testes passaram em 10 arquivos |
+| `npx playwright test` | 42 cenários passaram, incluindo catálogo, estoque e compras em desktop/mobile |
+| `npx playwright test e2e/purchases.spec.ts` | 14 cenários passaram novamente após os ajustes finais de preservação/status |
+| `npm run test:integration` | Passou no código final: build de produção isolado, smoke de catálogo/compras e 6 cenários reais desktop/mobile |
+| Limpeza real | 3 compras e 3 fornecedores removidos após seus itens; estoque/catálogo limpos e container próprio removido |
+| `git diff --check` | Passou |
+
+A última execução real foi concluída com código 0; o build contém as cinco rotas novas. Logs em `integration-artifacts/`, incluindo `frontend-build.log`, `backend.log` (SQLState 23503/FK de item_compra) e `database-cleanup.log`. Esses artefatos são temporários e ignorados pelo Git. Não há containers `vila-integration-*` restantes.
+
+As primeiras execuções detectaram seletores de testes ambíguos e a expectativa incorreta de HTTP 500 na exclusão; foram corrigidos para os nomes acessíveis exatos, escopos de diálogo/main e HTTP 409 confirmado no backend. Os testes não ocultam o defeito de integridade; ele permanece registrado em BG-005. A revisão final acrescentou testes de status atualizado por query e falha de refresh sem descartar formulário.
+
+SDK, package.json e lockfile sem alterações. O application.properties previamente modificado do checkout de backend foi preservado; a integração usa checkout próprio. Checks remotos de CI não foram executados nesta sessão. Nenhum deploy, merge ou publicação remota nesta etapa.

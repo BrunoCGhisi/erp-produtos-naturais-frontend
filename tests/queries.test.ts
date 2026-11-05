@@ -22,6 +22,10 @@ it("reconsulta listas, detalhe e relacionamentos ativos após uma mutação", as
       queryFn: relations,
     }),
   ];
+  for (const url of ["/api/fornecedores", "/api/compras", "/api/compras/:id"])
+    observers.push(
+      new QueryObserver(client, { queryKey: [{ url }], queryFn: relations }),
+    );
   const subscriptions = observers.map((o) => o.subscribe(() => {}));
   await Promise.all(observers.map((o) => o.refetch()));
   list.mockResolvedValue([{ nome: "Atualizado" }]);
@@ -29,7 +33,7 @@ it("reconsulta listas, detalhe e relacionamentos ativos após uma mutação", as
   await refreshCatalog(client);
   expect(list).toHaveBeenCalledTimes(2);
   expect(detail).toHaveBeenCalledTimes(2);
-  expect(relations).toHaveBeenCalledTimes(2);
+  expect(relations).toHaveBeenCalledTimes(8);
   expect(observers[0].getCurrentResult().data).toEqual([
     { nome: "Atualizado" },
   ]);

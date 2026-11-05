@@ -27,6 +27,10 @@ const links = [
   { href: "/unidades-medida", label: "Unidades de medida", icon: Ruler },
   { href: "/lojas", label: "Lojas", icon: Store },
 ];
+const purchaseLinks = [
+  { href: "/compras", label: "Pedidos", icon: Package },
+  { href: "/fornecedores", label: "Fornecedores", icon: Store },
+];
 const inventoryLinks = [
   { href: "/estoque", label: "Saldos", icon: Package },
   { href: "/estoque/movimentacoes", label: "Movimentações", icon: Store },
@@ -78,11 +82,34 @@ function Navigation({
           {label}
         </Link>
       ))}
-      <p className="mt-6 px-3.5 pb-2 text-[10px] font-semibold tracking-[1.8px] text-muted">ESTOQUE</p>
+      <p className="mt-6 px-3.5 pb-2 text-[10px] font-semibold tracking-[1.8px] text-muted">
+        COMPRAS
+      </p>
+      {purchaseLinks.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          onClick={onNavigate}
+          aria-current={path.startsWith(href) ? "page" : undefined}
+          className="my-[5px] flex items-center gap-3 rounded-[7px] px-3.5 py-3 text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:text-primary"
+        >
+          <Icon size={19} />
+          {label}
+        </Link>
+      ))}
+      <p className="mt-6 px-3.5 pb-2 text-[10px] font-semibold tracking-[1.8px] text-muted">
+        ESTOQUE
+      </p>
       {inventoryLinks.map(({ href, label, icon: Icon }) => (
-        <Link key={href} href={href} onClick={onNavigate} aria-current={path === href ? "page" : undefined}
-          className="my-[5px] flex items-center gap-3 rounded-[7px] px-3.5 py-3 text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:text-primary">
-          <Icon size={19} />{label}
+        <Link
+          key={href}
+          href={href}
+          onClick={onNavigate}
+          aria-current={path === href ? "page" : undefined}
+          className="my-[5px] flex items-center gap-3 rounded-[7px] px-3.5 py-3 text-[#617067] hover:bg-[#f3f6f2] aria-[current=page]:bg-[#eaf3eb] aria-[current=page]:text-primary"
+        >
+          <Icon size={19} />
+          {label}
         </Link>
       ))}
     </nav>
@@ -91,7 +118,10 @@ function Navigation({
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname(),
     [open, setOpen] = useState(false);
-  const current = [...inventoryLinks].reverse().find((x) => path === x.href) || links.find((x) => path.startsWith(x.href));
+  const current =
+    [...inventoryLinks].reverse().find((x) => path === x.href) ||
+    purchaseLinks.find((x) => path.startsWith(x.href)) ||
+    links.find((x) => path.startsWith(x.href));
   return (
     <div className="flex min-h-screen">
       <a
@@ -134,17 +164,37 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Dialog>
           </div>
           <div className="flex items-center gap-3 text-[12px] text-[#7b877e] mobile:gap-[7px] mobile:text-[11px]">
-            <Link href={path.startsWith("/estoque") ? "/estoque" : "/produtos"}>{path.startsWith("/estoque") ? "Estoque" : "Catálogo"}</Link>
+            <Link
+              href={
+                purchaseLinks.some((x) => path.startsWith(x.href))
+                  ? "/compras"
+                  : path.startsWith("/estoque")
+                    ? "/estoque"
+                    : "/produtos"
+              }
+            >
+              {purchaseLinks.some((x) => path.startsWith(x.href))
+                ? "Compras"
+                : path.startsWith("/estoque")
+                  ? "Estoque"
+                  : "Catálogo"}
+            </Link>
             <ChevronRight size={14} />
             <span className="text-[#3b5142]">
               {current?.label || "Página"}
-              {path.endsWith("/novo")
-                ? " / Novo produto"
-                : path.endsWith("/editar")
-                  ? " / Editar produto"
-                  : path.startsWith("/produtos/")
-                    ? " / Detalhes"
-                    : ""}
+              {path.endsWith("/nova")
+                ? " / Nova compra"
+                : path.startsWith("/compras/")
+                  ? path.endsWith("/editar")
+                    ? " / Editar rascunho"
+                    : " / Detalhes"
+                  : path.endsWith("/novo")
+                    ? " / Novo produto"
+                    : path.endsWith("/editar")
+                      ? " / Editar produto"
+                      : path.startsWith("/produtos/")
+                        ? " / Detalhes"
+                        : ""}
             </span>
           </div>
           <span className="flex items-center gap-[7px] text-[10px] tracking-[0.2px] text-[#79877b] compact:hidden">

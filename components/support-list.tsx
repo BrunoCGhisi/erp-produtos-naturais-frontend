@@ -7,8 +7,10 @@ import {
 } from "@/components/ui/panel";
 import { Input, Select } from "@/components/ui/input";
 import { Table, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import Link from "next/link";
+import { useListarFornecedores } from "@/generated/sdk/hooks/useListarFornecedores";
 import { useState } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { useListarCategorias } from "@/generated/sdk/hooks/useListarCategorias";
 import { useListarUnidadesMedida } from "@/generated/sdk/hooks/useListarUnidadesMedida";
 import { useListarLojas } from "@/generated/sdk/hooks/useListarLojas";
@@ -18,7 +20,7 @@ import { RecordModal } from "@/components/record-form";
 import { DeleteDialog } from "@/components/delete-dialog";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { resourceNames } from "@/lib/catalog";
-type SupportResource = "categories" | "units" | "stores";
+type SupportResource = "categories" | "units" | "stores" | "suppliers";
 type Row = {
   id?: string;
   nome?: string;
@@ -38,23 +40,27 @@ export function SupportList({ resource }: { resource: SupportResource }) {
     query: { enabled: resource === "units" },
   });
   const stores = useListarLojas({ query: { enabled: resource === "stores" } });
+  const suppliers = useListarFornecedores({
+    query: { enabled: resource === "suppliers" },
+  });
   const query =
     resource === "categories"
       ? categories
       : resource === "units"
         ? units
-        : stores;
+        : resource === "suppliers"
+          ? suppliers
+          : stores;
   const params = useSearchParams(),
-    router = useRouter(),
     pathname = usePathname();
   const search = params.get("busca") || "",
     sort = params.get("ordem") || "asc";
   function control(key: string, value: string) {
-    const next = new URLSearchParams(params);
+    const next = new URLSearchParams(window.location.search);
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "pagina") next.delete("pagina");
-    router.replace(`${pathname}?${next}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}?${next}`);
   }
   const [edit, setEdit] = useState<Row | null | undefined>(),
     [remove, setRemove] = useState<Row>(),
@@ -84,7 +90,9 @@ export function SupportList({ resource }: { resource: SupportResource }) {
       ? "Nova unidade de medida"
       : resource === "categories"
         ? "Nova categoria"
-        : "Nova loja";
+        : resource === "suppliers"
+          ? "Novo fornecedor"
+          : "Nova loja";
   return (
     <>
       <Heading
@@ -94,7 +102,9 @@ export function SupportList({ resource }: { resource: SupportResource }) {
             ? "Organize os produtos em categorias para facilitar o dia a dia."
             : resource === "units"
               ? "Defina as unidades utilizadas no cadastro dos produtos."
-              : "Cadastre as lojas que fazem parte da Vila Verde."
+              : resource === "suppliers"
+                ? "Cadastre os fornecedores da Vila Verde."
+                : "Cadastre as lojas que fazem parte da Vila Verde."
         }
         action={
           <Button
@@ -119,7 +129,10 @@ export function SupportList({ resource }: { resource: SupportResource }) {
       <Panel>
         <PanelHeader>
           <div>
-            <PanelTitle>{names.plural} cadastradas</PanelTitle>
+            <PanelTitle>
+              {names.plural}{" "}
+              {resource === "suppliers" ? "cadastrados" : "cadastradas"}
+            </PanelTitle>
             <PanelDescription>
               {query.data?.length || 0} registros no catálogo
             </PanelDescription>
@@ -172,7 +185,7 @@ export function SupportList({ resource }: { resource: SupportResource }) {
               <TableRow>
                 <TableHead>NOME</TableHead>
                 {resource === "units" && <TableHead>SIGLA</TableHead>}
-                {resource === "stores" && (
+                {(resource === "stores" || resource === "suppliers") && (
                   <>
                     <TableHead>CNPJ</TableHead>
                     <TableHead>CIDADE / UF</TableHead>
@@ -188,7 +201,7 @@ export function SupportList({ resource }: { resource: SupportResource }) {
                     {row.nome || row.nomeFantasia}
                   </TableCell>
                   {resource === "units" && <TableCell>{row.sigla}</TableCell>}
-                  {resource === "stores" && (
+                  {(resource === "stores" || resource === "suppliers") && (
                     <>
                       <TableCell>{row.cnpj}</TableCell>
                       <TableCell>
@@ -198,6 +211,11 @@ export function SupportList({ resource }: { resource: SupportResource }) {
                   )}
                   <TableCell>
                     <div className="flex justify-end gap-[3px] [&_button]:text-[#7a887e] [&_button:hover]:text-[#9a3935] mobile:[&_[data-slot=button]]:p-[5px]">
+                      {resource === "suppliers" && (
+                        <Link href={`/compras?idFornecedor=${row.id}`}>
+                          Ver compras
+                        </Link>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

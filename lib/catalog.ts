@@ -1,4 +1,8 @@
+import { criarFornecedor } from "@/generated/sdk/clients/criarFornecedor";
+import { atualizarFornecedor } from "@/generated/sdk/clients/atualizarFornecedor";
+import { excluirFornecedor } from "@/generated/sdk/clients/excluirFornecedor";
 import {
+  supplierSchema,
   categorySchema,
   unitSchema,
   storeSchema,
@@ -49,6 +53,16 @@ const status: Field = {
   ],
 };
 export const fields = {
+  suppliers: [
+    { name: "nomeFantasia", label: "Nome fantasia" },
+    { name: "razaoSocial", label: "Razão social" },
+    { name: "estado", label: "Estado", hint: "UF com duas letras." },
+    { name: "cidade", label: "Cidade" },
+    { name: "bairro", label: "Bairro" },
+    { name: "complemento", label: "Complemento", optional: true },
+    { name: "cnpj", label: "CNPJ", optional: true },
+    { name: "cpf", label: "CPF", optional: true },
+  ],
   categories: [{ name: "nome", label: "Nome" }],
   units: [
     { name: "nome", label: "Nome" },
@@ -129,6 +143,11 @@ export const resourceNames: Record<
   Resource,
   { url: string; plural: string; singular: string }
 > = {
+  suppliers: {
+    url: "fornecedores",
+    plural: "Fornecedores",
+    singular: "fornecedor",
+  },
   categories: {
     url: "categorias",
     plural: "Categorias",
@@ -154,6 +173,7 @@ export const resourceNames: Record<
   },
 };
 export const schemas: Record<Resource, z.ZodType> = {
+  suppliers: supplierSchema,
   categories: categorySchema,
   units: unitSchema,
   stores: storeSchema,
@@ -185,6 +205,12 @@ export async function saveRecord(
   id?: string,
 ) {
   switch (resource) {
+    case "suppliers": {
+      const body = supplierSchema.parse(values);
+      return id
+        ? atualizarFornecedor({ path: { id }, body }).unwrap()
+        : criarFornecedor({ body }).unwrap();
+    }
     case "categories": {
       const body = categorySchema.parse(values);
       return id
@@ -229,6 +255,8 @@ export async function saveRecord(
 }
 export async function deleteRecord(resource: Resource, id: string) {
   switch (resource) {
+    case "suppliers":
+      return excluirFornecedor({ path: { id } }).unwrap();
     case "categories":
       return excluirCategoria({ path: { id } }).unwrap();
     case "units":

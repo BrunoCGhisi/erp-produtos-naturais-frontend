@@ -120,3 +120,16 @@ export function localDate(v?: string) {
     .toISOString()
     .slice(0, 16);
 }
+
+export const supplierSchema = z.object({
+  nomeFantasia: required,
+  razaoSocial: required,
+  estado: required
+    .transform((v) => v.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{2}$/, "Informe a UF com duas letras.")),
+  cidade: required,
+  bairro: required,
+  complemento: z.string().trim().optional(),
+  cnpj: z.string().trim().optional(),
+  cpf: z.string().trim().optional(),
+});

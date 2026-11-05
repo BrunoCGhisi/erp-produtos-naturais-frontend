@@ -1,4 +1,6 @@
 const resources = new Set([
+  "fornecedores",
+  "compras",
   "estoques",
   "movimentacoes-estoque",
   "produtos",
@@ -12,18 +14,27 @@ const resources = new Set([
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function forwardCatalog(request: Request, path: string[]) {
   const [resource, id] = path;
-  const inventory = resource === "estoques" || resource === "movimentacoes-estoque";
+  const inventory =
+    resource === "estoques" || resource === "movimentacoes-estoque";
   const balance = resource === "estoques" && id === "saldo";
-  if (!resources.has(resource) || path.length > 2 || (id && !balance && !uuid.test(id)))
+  if (
+    !resources.has(resource) ||
+    path.length > 2 ||
+    (id && !balance && !uuid.test(id))
+  )
     return Response.json(
       { message: "Recurso não encontrado." },
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
-  const allowed = inventory ? ["GET"] : id
-    ? resource === "produtos-loja"
-      ? ["GET", "DELETE"]
-      : ["GET", "PUT", "DELETE"]
-    : ["GET", "POST"];
+  const allowed = inventory
+    ? ["GET"]
+    : id
+      ? resource === "produtos-loja"
+        ? ["GET", "DELETE"]
+        : resource === "compras"
+          ? ["GET", "PUT"]
+          : ["GET", "PUT", "DELETE"]
+      : ["GET", "POST"];
   if (!allowed.includes(request.method))
     return Response.json(
       { message: "Método não permitido." },
@@ -34,8 +45,16 @@ export async function forwardCatalog(request: Request, path: string[]) {
     );
   if (balance) {
     const params = new URL(request.url).searchParams;
-    if (!["idProduto", "idLoja"].every((key) => params.getAll(key).length === 1 && uuid.test(params.get(key) || "")))
-      return Response.json({ message: "Informe idProduto e idLoja válidos." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    if (
+      !["idProduto", "idLoja"].every(
+        (key) =>
+          params.getAll(key).length === 1 && uuid.test(params.get(key) || ""),
+      )
+    )
+      return Response.json(
+        { message: "Informe idProduto e idLoja válidos." },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
+      );
   }
   try {
     const base = process.env.BACKEND_API_URL || "http://localhost:8080";

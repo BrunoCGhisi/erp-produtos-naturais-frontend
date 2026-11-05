@@ -1,10 +1,10 @@
-# Vila Verde · Catálogo e estoque
+# Vila Verde · Catálogo, estoque e compras
 
-Frontend administrativo em português para o catálogo e a consulta de estoque de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
+Frontend administrativo em português para catálogo, consulta de estoque, fornecedores e rascunhos de compras de produtos naturais. Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, componentes no padrão shadcn/ui com Radix, Lucide, React Hook Form, Zod, Axios e TanStack Query.
 
 ## Estado da implementação
 
-Catálogo e consulta de estoque implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md).
+Catálogo, consulta de estoque, fornecedores e rascunhos de compras implementados, com estilos em utilitários Tailwind e componentes reutilizáveis. O resumo para continuidade está em [docs/PLANNER_HANDOFF.md](docs/PLANNER_HANDOFF.md). As limitações verificadas do backend estão em [docs/BACKEND_GAPS.md](docs/BACKEND_GAPS.md).
 
 Validação anterior do catálogo em 04/11/2026, com Node 24 (a evidência da etapa 2 está no handoff):
 
@@ -32,7 +32,7 @@ Abra http://localhost:3000. A raiz redireciona para `/produtos`. O lockfile vers
 
 `BACKEND_API_URL=http://localhost:8080` é uma variável **somente do servidor** e deve conter a origem do backend. Reinicie o Next.js após alterá-la. Não use `NEXT_PUBLIC_` nem aponte para Render ao testar mutações.
 
-O navegador chama o mesmo domínio em `/api`. O Route Handler encaminha os recursos de catálogo `produtos`, `categorias`, `unidades-medida`, `lojas`, `produtos-sku`, `produtos-loja` e `produtos-precos-loja`. No catálogo, permite GET/POST de coleções e GET/PUT/DELETE por UUID; vínculos não aceitam PUT. Estoque permite somente GET em `estoques`, `estoques/{uuid}`, `estoques/saldo`, `movimentacoes-estoque` e `movimentacoes-estoque/{uuid}`. O saldo exige `idProduto` e `idLoja` UUIDs válidos; escritas de estoque retornam 405. Mantém parâmetros, códigos HTTP, JSON de erro e respostas vazias 204; desativa cache e limita a espera pelo backend a 15 segundos. Não encaminha credenciais ou cookies.
+O navegador chama o mesmo domínio em `/api`. O Route Handler encaminha os recursos de catálogo `produtos`, `categorias`, `unidades-medida`, `lojas`, `produtos-sku`, `produtos-loja` e `produtos-precos-loja`. No catálogo, permite GET/POST de coleções e GET/PUT/DELETE por UUID; vínculos não aceitam PUT. Estoque permite somente GET em `estoques`, `estoques/{uuid}`, `estoques/saldo`, `movimentacoes-estoque` e `movimentacoes-estoque/{uuid}`. O saldo exige `idProduto` e `idLoja` UUIDs válidos; escritas de estoque retornam 405. Mantém parâmetros, códigos HTTP, JSON de erro e respostas vazias 204; desativa cache e limita a espera pelo backend a 15 segundos. Não encaminha credenciais ou cookies. Fornecedores permitem GET/POST de coleção e GET/PUT/DELETE por UUID; compras permitem GET/POST de coleção e GET/PUT por UUID. Exclusão, transições e recebimentos de compra não são encaminhados.
 
 ## Backend e SDK
 
@@ -76,7 +76,7 @@ As abas fazem operações independentes: uma falha não apaga o que já foi salv
 
 Busca, ordenação e paginação (20 registros) são locais porque a API retorna arrays. Os controles ficam nos parâmetros da URL; produtos também têm filtros de categoria e status. Cadastros de apoio usam modais, e produtos usam páginas completas. Exclusões exigem confirmação e nunca fazem cascata. Erros de integridade permanecem visíveis; formulários mantêm o conteúdo após falhas e bloqueiam novo envio enquanto salvam.
 
-Sem autenticação nesta primeira versão, destinada a desenvolvimento/demonstração interna. Fornecedores, clientes, vendas, compras, ajustes/transferências de estoque, dashboards, usuários e hospedagem estão fora do escopo.
+Sem autenticação, destinada a desenvolvimento/demonstração interna. Clientes, vendas, recebimentos, transições de compra, ajustes/transferências de estoque, dashboards, usuários e hospedagem estão fora do escopo.
 
 ## Consulta de estoque (etapa 2)
 
@@ -114,3 +114,17 @@ O script chama o proxy, cria e relê categoria, unidade, loja, produto, SKU, ví
 ## Repositório de destino
 
 Destino solicitado: [`BrunoCGhisi/erp-produtos-naturais-frontend`](https://github.com/BrunoCGhisi/erp-produtos-naturais-frontend). A branch de entrega é `feat/catalog`, preparada pelo usuário a partir do estado de `master`; a base local inspecionada é `657257d` (`Initial commit`). A implementação inicial foi enviada no commit `1a4f0d2`. O refactor Tailwind e este handoff são a continuação dessa entrega. A instalação reproduzível e o ambiente descartável estão automatizados; consulte o handoff para os resultados de execução. Não use force push.
+
+## Fornecedores e rascunhos de compras (etapa 3)
+
+- `/fornecedores`: busca, ordem, paginação de 20 registros e CRUD com confirmação de exclusão. Campos reais do DTO: nome fantasia, razão social, UF, cidade, bairro (obrigatórios), complemento, CNPJ e CPF (opcionais). UF é normalizada para duas letras maiúsculas. “Ver compras” abre os pedidos filtrados.
+- `/compras`: fornecedor, loja, data em São Paulo, todos os status retornados e total salvo. Filtros de fornecedor/loja/status/datas, ordenação e páginas de 20 linhas ficam na URL. Ordem inicial: data mais recente.
+- `/compras/nova`, `/compras/[id]` e `/compras/[id]/editar`: criação, consulta e edição restrita a RASCUNHO. Cabeçalho com fornecedor/loja obrigatórios, data opcional e observação. Sem data na criação, o backend usa seu padrão. Os horários usam America/Sao_Paulo e são enviados com offset ISO.
+- Cada compra precisa de pelo menos um item do catálogo: quantidade positiva com até três casas, custo não negativo com até quatro e desconto monetário não negativo com até duas. Não há seleção de usuário, preço de venda automático nem restrição nova de produto por loja/fornecedor.
+- Prévia usa inteiros escalados e HALF_UP por item antes da soma; limites de numeric(14,s) e desconto superior ao bruto são rejeitados. Depois de salvar, os totais retornados pelo backend são autoritativos. Custos exibem até quatro casas.
+- Formulários preservam valores em falhas e exigem consultas de pré-requisitos bem-sucedidas. Se o servidor rejeitar edição por mudança de status, a interface confirma o status salvo e bloqueia novo envio. Falhas de confirmação aparecem separadamente, com retry.
+- **Salvar rascunho não altera estoque.** Quantidades recebidas aparecem apenas no detalhe. Não há exclusão, aprovação, cancelamento, recebimento ou transição de status na UI.
+
+`npm run test:integration` também exercita fornecedores/compras com backend e PostgreSQL descartáveis, valida totais persistidos, substituição de itens e estoque inalterado, e reproduz [BG-005](docs/BACKEND_GAPS.md#bg-005). A limpeza remove itens de compra por SQL exclusivamente no container de teste, depois cabeçalhos/fornecedores por API, antes dos pré-requisitos do catálogo. Não há SQL nem exclusão em cascata de compras na aplicação.
+
+Validação local da etapa 3: lint, tipos, 82 testes unitários/de componentes, 42 cenários desktop/mobile, build de produção e seis cenários reais passaram. Os 14 cenários de compras passaram novamente após os ajustes finais. Evidências e detalhes de entrega estão no [handoff](docs/PLANNER_HANDOFF.md#etapa-3--fornecedores-e-rascunhos-de-compras). SDK, backend de referência e dependências permanecem iguais.

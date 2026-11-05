@@ -73,32 +73,128 @@ it("retorna erro tratável quando backend está indisponível", async () => {
 });
 const inventoryId = "11111111-1111-4111-8111-111111111111";
 it.each([
-  ["estoques"], ["estoques", inventoryId], ["estoques", "saldo"],
-  ["movimentacoes-estoque"], ["movimentacoes-estoque", inventoryId],
+  ["estoques"],
+  ["estoques", inventoryId],
+  ["estoques", "saldo"],
+  ["movimentacoes-estoque"],
+  ["movimentacoes-estoque", inventoryId],
 ])("encaminha GET de estoque %s", async (...path) => {
   const fetch = vi.fn().mockResolvedValue(Response.json({ ok: true }));
   vi.stubGlobal("fetch", fetch);
   const query = `?idProduto=${inventoryId}&idLoja=${inventoryId}`;
-  const result = await forwardCatalog(new Request(`http://localhost/api/${path.join("/")}${query}`), path);
+  const result = await forwardCatalog(
+    new Request(`http://localhost/api/${path.join("/")}${query}`),
+    path,
+  );
   expect(result.status).toBe(200);
-  expect(String(fetch.mock.calls[0][0])).toBe(`http://localhost:8080/api/${path.join("/")}${query}`);
+  expect(String(fetch.mock.calls[0][0])).toBe(
+    `http://localhost:8080/api/${path.join("/")}${query}`,
+  );
 });
-it.each(["", "?idProduto=abc&idLoja=abc", `?idProduto=${inventoryId}`, `?idLoja=${inventoryId}`, `?idProduto=${inventoryId}&idLoja=${inventoryId}&idLoja=${inventoryId}`])("exige parâmetros válidos no saldo %s", async (query) => {
-  const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
-  expect((await forwardCatalog(new Request(`http://localhost/api/estoques/saldo${query}`), ["estoques", "saldo"])).status).toBe(400);
+it.each([
+  "",
+  "?idProduto=abc&idLoja=abc",
+  `?idProduto=${inventoryId}`,
+  `?idLoja=${inventoryId}`,
+  `?idProduto=${inventoryId}&idLoja=${inventoryId}&idLoja=${inventoryId}`,
+])("exige parâmetros válidos no saldo %s", async (query) => {
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  expect(
+    (
+      await forwardCatalog(
+        new Request(`http://localhost/api/estoques/saldo${query}`),
+        ["estoques", "saldo"],
+      )
+    ).status,
+  ).toBe(400);
   expect(fetch).not.toHaveBeenCalled();
 });
-it.each(["estoques", "movimentacoes-estoque"])("valida UUID e bloqueia toda escrita em %s", async (resource) => {
-  const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
-  for (const id of ["invalid", "..", "saldo"]) {
-    if (resource === "estoques" && id === "saldo") continue;
-    expect((await forwardCatalog(new Request("http://localhost/api"), [resource, id])).status).toBe(404);
-  }
-  for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
-    for (const path of [[resource], [resource, inventoryId], ...(resource === "estoques" ? [[resource, "saldo"]] : [])]) {
-      const result = await forwardCatalog(new Request("http://localhost/api", { method }), path);
-      expect(result.status).toBe(405); expect(result.headers.get("Allow")).toBe("GET");
+it.each(["estoques", "movimentacoes-estoque"])(
+  "valida UUID e bloqueia toda escrita em %s",
+  async (resource) => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    for (const id of ["invalid", "..", "saldo"]) {
+      if (resource === "estoques" && id === "saldo") continue;
+      expect(
+        (
+          await forwardCatalog(new Request("http://localhost/api"), [
+            resource,
+            id,
+          ])
+        ).status,
+      ).toBe(404);
     }
-  }
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+      for (const path of [
+        [resource],
+        [resource, inventoryId],
+        ...(resource === "estoques" ? [[resource, "saldo"]] : []),
+      ]) {
+        const result = await forwardCatalog(
+          new Request("http://localhost/api", { method }),
+          path,
+        );
+        expect(result.status).toBe(405);
+        expect(result.headers.get("Allow")).toBe("GET");
+      }
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  },
+);
+it.each(["fornecedores", "compras"])(
+  "permite somente o contrato de %s",
+  async (resource) => {
+    const fetch = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(Response.json({ id: inventoryId })),
+      );
+    vi.stubGlobal("fetch", fetch);
+    for (const [path, methods] of [
+      [[resource], ["GET", "POST"]],
+      [
+        [resource, inventoryId],
+        resource === "compras" ? ["GET", "PUT"] : ["GET", "PUT", "DELETE"],
+      ],
+    ] as [string[], string[]][]) {
+      for (const method of methods)
+        expect(
+          (
+            await forwardCatalog(
+              new Request("http://localhost/api", { method }),
+              path,
+            )
+          ).status,
+        ).toBe(200);
+    }
+  },
+);
+it("bloqueia exclusão, transições e recebimentos de compras sem consultar upstream", async () => {
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  expect(
+    (
+      await forwardCatalog(
+        new Request("http://localhost/api", { method: "DELETE" }),
+        ["compras", inventoryId],
+      )
+    ).status,
+  ).toBe(405);
+  for (const path of [
+    ["compras", inventoryId, "status"],
+    ["compras", inventoryId, "receber"],
+    ["compras", "status"],
+    ["recebimentos-compra"],
+  ])
+    expect(
+      (
+        await forwardCatalog(
+          new Request("http://localhost/api", { method: "POST" }),
+          path,
+        )
+      ).status,
+    ).toBe(404);
   expect(fetch).not.toHaveBeenCalled();
 });
