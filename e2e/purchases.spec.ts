@@ -336,7 +336,7 @@ test("navegação de compras em desktop/mobile e breadcrumbs", async ({
   await expect(
     page
       .getByRole("banner")
-      .getByRole("link", { name: "Compras", exact: true }),
+      .getByText("Compras", { exact: true }),
   ).toBeVisible();
   if (testInfo.project.name === "mobile")
     await page.getByRole("button", { name: "Abrir menu" }).click();

@@ -130,17 +130,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
       >
         Pular para conteúdo
       </a>
-      <aside className="fixed inset-y-0 left-0 flex w-[246px] flex-col border-r border-border bg-white px-5 py-[31px] compact:w-[210px] compact:px-[13px] compact:py-7 mobile:hidden">
-        <Brand />
-        <Navigation path={path} onNavigate={() => setOpen(false)} />
-        <div className="mt-auto flex gap-2.5 border-t border-border px-[5px] pt-6 text-[11px] text-[#5b7e61]">
-          <Sprout size={22} />
-          <p>
-            Organizado para crescer.
-            <small className="mt-[3px] block text-[10px] text-[#7e8980]">
-              Produtos naturais, gestão simples.
-            </small>
-          </p>
+      <aside className="fixed inset-y-0 left-0 flex w-[246px] flex-col overflow-hidden border-r border-border bg-white py-[31px] pl-5 compact:w-[210px] compact:py-7 compact:pl-[13px] mobile:hidden">
+        <div className="shrink-0 pr-5 compact:pr-[13px]">
+          <Brand />
+        </div>
+        <div className="mt-[46px] flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-5 compact:pr-[13px]">
+          <Navigation path={path} onNavigate={() => setOpen(false)} className="mt-0 shrink-0" />
+          <div className="mt-auto flex shrink-0 gap-2.5 border-t border-border px-[5px] pt-6 text-[11px] text-[#5b7e61]">
+            <Sprout size={22} />
+            <p>
+              Organizado para crescer.
+              <small className="mt-[3px] block text-[10px] text-[#7e8980]">
+                Produtos naturais, gestão simples.
+              </small>
+            </p>
+          </div>
         </div>
       </aside>
       <div className="ml-[246px] flex w-[calc(100%-246px)] flex-col compact:ml-[210px] compact:w-[calc(100%-210px)] mobile:ml-0 mobile:w-full">
@@ -164,21 +168,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Dialog>
           </div>
           <div className="flex items-center gap-3 text-[12px] text-[#7b877e] mobile:gap-[7px] mobile:text-[11px]">
-            <Link
-              href={
-                purchaseLinks.some((x) => path.startsWith(x.href))
-                  ? "/compras"
-                  : path.startsWith("/estoque")
-                    ? "/estoque"
-                    : "/produtos"
-              }
-            >
+            <span>
               {purchaseLinks.some((x) => path.startsWith(x.href))
                 ? "Compras"
                 : path.startsWith("/estoque")
                   ? "Estoque"
                   : "Catálogo"}
-            </Link>
+            </span>
             <ChevronRight size={14} />
             <span className="text-[#3b5142]">
               {current?.label || "Página"}
